@@ -1,9 +1,12 @@
 # Security review — Outlook Wayland release candidate
 
-Date: 2026-10-21  
-Source commit: `997b5517ad2db7353680ea34f4d4a60c5e126bbb`  
-Artifact: `dist/prospect-mail_1.3.1_amd64.deb`  
-SHA256: `a8d7296628c30038ddeb6848694e2ad926f450014615407cdc48e95fd71aa26c`
+Date: 2026-10-21
+
+Source commit: `2a239ed5cc1fa9673989e4005aa43c93084b30b8`
+
+Artifact: `dist/prospect-mail_1.3.1_amd64.deb`
+
+SHA256: `fd0016add314bd5133279a8ca5313011203382d3995a8ee6596e2399bbdd2008`
 
 ## Result
 
@@ -24,6 +27,7 @@ No unresolved high-risk source or packaged-runtime finding was identified. All p
 - Production logs contain no full URLs, auth query strings, cookie values, subjects, event details, attachment names or profile paths. Calendar notification details are opt-in and off by default.
 - The Linux package advertises `mailto:` capability but contains no code that changes the user's default handler.
 - The packaged app archive contains required runtime files and MIT license, but excludes tests, smoke harnesses, Cursor instructions, scripts and implementation documents.
+- The Core24 Snap desktop fix is an exact, validated backport of merged electron-builder PR #10176. Its postinstall patch is idempotent, checks exact markers and is excluded from the runtime archive.
 
 ## Dependency and package evidence
 

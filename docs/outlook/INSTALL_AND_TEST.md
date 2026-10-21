@@ -2,14 +2,14 @@
 
 ## Candidate
 
-- Source commit: `997b5517ad2db7353680ea34f4d4a60c5e126bbb`
+- Source commit: `2a239ed5cc1fa9673989e4005aa43c93084b30b8`
 - Branch: `feat/outlook-wayland-ubuntu`
 - Fork: <https://github.com/nitsiosa/prospect-mail>
 - Draft PR: <https://github.com/nitsiosa/prospect-mail/pull/1>
 - Debian package: `dist/prospect-mail_1.3.1_amd64.deb`
 - Package name/version/architecture: `prospect-mail` / `1.3.1` / `amd64`
-- SHA256: `a8d7296628c30038ddeb6848694e2ad926f450014615407cdc48e95fd71aa26c`
-- Node tests: 43 passed, 0 failed
+- SHA256: `fd0016add314bd5133279a8ca5313011203382d3995a8ee6596e2399bbdd2008`
+- Node tests: 45 passed, 0 failed
 - Production dependency audit: 0 vulnerabilities
 - Packaged archive native-Wayland smoke: passed with a synthetic Outlook page
 - Installed sandbox runtime: `NEEDS_HUMAN` (static package/AppArmor checks passed)
@@ -33,7 +33,7 @@ Review without installation:
 ```bash
 dpkg-deb --info dist/prospect-mail_1.3.1_amd64.deb
 dpkg-deb --contents dist/prospect-mail_1.3.1_amd64.deb
-echo 'a8d7296628c30038ddeb6848694e2ad926f450014615407cdc48e95fd71aa26c  dist/prospect-mail_1.3.1_amd64.deb' | sha256sum -c -
+echo 'fd0016add314bd5133279a8ca5313011203382d3995a8ee6596e2399bbdd2008  dist/prospect-mail_1.3.1_amd64.deb' | sha256sum -c -
 ```
 
 ## Install on Ubuntu

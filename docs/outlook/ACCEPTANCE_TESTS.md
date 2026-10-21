@@ -27,14 +27,14 @@ States must be one of: `AUTO_PASS`, `HUMAN_PASS`, `FAIL`, `BLOCKED`, `NOT_RUN`. 
 
 ## Current candidate evidence
 
-Recorded 2026-10-21 on Ubuntu 24.04.5 GNOME Wayland x86_64, source commit `997b5517ad2db7353680ea34f4d4a60c5e126bbb`, package SHA256 `a8d7296628c30038ddeb6848694e2ad926f450014615407cdc48e95fd71aa26c`.
+Recorded 2026-10-21 on Ubuntu 24.04.5 GNOME Wayland x86_64, source commit `2a239ed5cc1fa9673989e4005aa43c93084b30b8`, package SHA256 `fd0016add314bd5133279a8ca5313011203382d3995a8ee6596e2399bbdd2008`.
 
 `AUTO_PASS`:
 
 - T01: explicit secure BrowserWindow preferences and packaged no-bypass checks pass; synthetic source and packaged-archive smoke reports sandboxed renderers. Installed Chromium sandbox launch remains part of T18's human install check.
 - T13: scheme, lookalike, userinfo, malformed and encoded attack cases pass.
 - T14: trusted-source native-protocol rules, secure popup isolation and federated redirect policy pass.
-- T19: `npm test` passes 43/43, including the original upstream tests.
+- T19: `npm test` passes 45/45, including the original upstream tests.
 - T20: focused log/static checks pass; no secret-like material was found in changed source/fixtures.
 
 Automated portions pass, but the end-to-end test remains `NOT_RUN` until live validation:

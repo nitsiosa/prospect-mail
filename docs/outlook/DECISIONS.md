@@ -54,3 +54,8 @@ Rationale: Enterprise Entra flows can redirect through tenant IdPs that cannot b
 Date: 2026-10-21
 Decision: Package only runtime source/assets, production dependencies and the MIT license. Exclude tests, smoke harnesses, implementation documents, Cursor rules and development scripts from `app.asar`.
 Rationale: Test-only sandbox bypasses and engineering material must not ship, and a smaller allowlisted payload is easier to audit.
+
+## D-013: Backport merged Core24 Snap fix
+Date: 2026-10-21
+Decision: Apply an exact, idempotent postinstall backport of electron-builder PR #10176 to the v26 build dependency. Remove the duplicate Core24 `apps.desktop` mapping and use the snap name in generated desktop `Exec` values.
+Rationale: Both remote Linux builds deterministically failed because electron-builder 26.18.0 contains the pre-fix mapping. The fix is already merged upstream but not released on the v26 tag; upgrading all packaging to a v27 alpha has a larger and less controlled blast radius.

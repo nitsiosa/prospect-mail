@@ -19,9 +19,9 @@ Environment: `Ubuntu 24.04.5 LTS / GNOME Wayland / x86_64 / Node 24.22.0 / npm 1
 | E. Security hardening | AUTO_PASS (code) | Scoped IPC, guarded navigation/popups, private notification default, redacted logging, production audit clean |
 | F. Debian build and handoff | AUTO_PASS (build) / NEEDS_HUMAN (install) | Debian package built/inspected; install and live checks not run |
 
-Automated tests: `AUTO_PASS — 43/43 Node tests plus source and packaged-archive native-Wayland synthetic smoke, 2026-10-21`
+Automated tests: `AUTO_PASS — 45/45 Node tests plus source and packaged-archive native-Wayland synthetic smoke, 2026-10-21`
 Security review: `AUTO_PASS (source/runtime boundaries) — npm audit --omit=dev: 0 vulnerabilities; full audit: 8 moderate development-only findings in electron-builder's legacy global-agent chain`
-Debian artifact: `dist/prospect-mail_1.3.1_amd64.deb — SHA256 a8d7296628c30038ddeb6848694e2ad926f450014615407cdc48e95fd71aa26c`
+Debian artifact: `dist/prospect-mail_1.3.1_amd64.deb — SHA256 fd0016add314bd5133279a8ca5313011203382d3995a8ee6596e2399bbdd2008`
 Ready for human testing: `YES LOCALLY — remote CI pending; live acceptance is not implied`
 Live corporate acceptance: `NOT_RUN`
 
@@ -31,9 +31,11 @@ Live corporate acceptance: `NOT_RUN`
 - Do not provide credentials, tokens, cookies, tenant IDs or private mailbox/calendar content.
 
 ## Recent activity (prepend entries)
+- [2026-10-21 remote repair] Remote unit tests and Windows x64/macOS arm64 builds passed. Both actual failures were the same unreleased electron-builder Core24 desktop-mapping bug; other matrix jobs were fail-fast cancellations. Backported merged upstream PR #10176 exactly, added an idempotence/installed-code regression, and verified the generated Snap descriptor locally.
+- [2026-10-21 rebuilt artifact] Rebuilt and re-inspected the Debian candidate after the packaging backport. Final SHA256: `fd0016add314bd5133279a8ca5313011203382d3995a8ee6596e2399bbdd2008`.
 - [2026-10-21 remote CI] With explicit approval, enabled inherited GitHub Actions on the new fork. `Test`, `Build & Release`, and the tag/manual-only release-notes workflow are active; the next docs-only push triggers the applicable test/build workflows.
 - [2026-10-21 remote] Created `nitsiosa/prospect-mail`, pushed all four commits and opened draft PR #1 against the fork's `main`. The PR is mergeable/clean with no comments or reviews, but GitHub reports zero workflows/check runs, so remote CI is not green or verified.
-- [2026-10-21 release candidate] Built `prospect-mail_1.3.1_amd64.deb`; desktop/control/AppArmor/permissions/archive checks pass. Final SHA256: `a8d7296628c30038ddeb6848694e2ad926f450014615407cdc48e95fd71aa26c`.
+- [2026-10-21 release candidate] Built `prospect-mail_1.3.1_amd64.deb`; desktop/control/AppArmor/permissions/archive checks pass.
 - [2026-10-21 packaged smoke] Loaded the final packaged `app.asar` against a synthetic Outlook origin on native Ozone Wayland; main/popup isolation, notification IPC and mailto compose passed. Test/development material is absent from the archive.
 - [2026-10-21 auth compatibility] Added bounded federated HTTPS redirect handling for tenant IdPs while retaining Microsoft-origin-only IPC.
 - [2026-10-21 implementation] Added parsed URL/deep-link/Safe Links/Teams/mailto routing with hostile-host, userinfo, malformed, encoded-control and length-limit tests.
