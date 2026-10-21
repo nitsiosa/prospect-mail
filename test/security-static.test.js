@@ -42,13 +42,11 @@ test("packaged launch never disables the Chromium sandbox", () => {
   );
 });
 
-test("mailto is advertised without silently changing the OS default", () => {
+test("mailto activation is opt-in and preserves technical desktop IDs", () => {
   const packageJson = JSON.parse(read("package.json"));
   const mainSource = read("src/main.js");
 
-  assert.deepEqual(packageJson.build.linux.mimeTypes, [
-    "x-scheme-handler/mailto",
-  ]);
+  assert.equal(packageJson.build.linux.mimeTypes, undefined);
   assert.equal(packageJson.build.linux.category, "Network;Email");
   assert.deepEqual(packageJson.build.linux.executableArgs, [
     "--ozone-platform=wayland",

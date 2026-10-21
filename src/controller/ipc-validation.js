@@ -5,6 +5,7 @@ const { isTrustedRendererUrl } = require("./url-router");
 const MAX_UNREAD_COUNT = 1_000_000;
 const MAX_REMINDER_COUNT = 100;
 const MAX_NOTIFICATION_DETAILS_LENGTH = 1000;
+const APP_NAME = "Harbour Mail";
 const NOTIFICATION_CONTROL_CHARACTERS =
   /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
 const LOGIN_REASONS = new Set(["session-expired", "login-page"]);
@@ -79,7 +80,7 @@ function validateNotificationRequest(value) {
 function buildNotificationContent(request, showDetails) {
   if (request.kind === "mail") {
     return {
-      title: "Prospect Mail: New Messages",
+      title: `${APP_NAME}: New Messages`,
       body: `There are ${request.count} unread messages.`,
     };
   }
@@ -87,11 +88,11 @@ function buildNotificationContent(request, showDetails) {
   const plural = request.count === 1 ? "Reminder" : "Reminders";
   const genericPlural = request.count === 1 ? "reminder" : "reminders";
   return {
-    title: `Prospect Mail: ${request.count} Calendar ${plural}`,
+    title: `${APP_NAME}: ${request.count} Calendar ${plural}`,
     body:
       showDetails && request.details
         ? request.details
-        : `Open Prospect Mail to view the ${genericPlural}.`,
+        : `Open ${APP_NAME} to view the ${genericPlural}.`,
   };
 }
 

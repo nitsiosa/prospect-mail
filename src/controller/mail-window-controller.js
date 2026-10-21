@@ -40,6 +40,8 @@ const {
 const { chooseShowAction } = require("./window-state");
 
 let showWindowFrame;
+const APP_NAME = "Harbour Mail";
+const APP_ICON = path.join(__dirname, "../../assets/harbour_mail.png");
 
 // Microsoft auth domains whose cookies are checked/cleaned for session recovery
 const AUTH_DOMAINS = [
@@ -204,7 +206,7 @@ class MailWindowController {
       /^[A-Z0-9_-]{1,64}$/i.test(error.code)
         ? ` (${error.code})`
         : "";
-    console.warn(`[Prospect Mail] ${operation} failed${code}`);
+    console.warn(`[${APP_NAME}] ${operation} failed${code}`);
   }
 
   routeUserLink(url, sourceUrl) {
@@ -378,8 +380,8 @@ class MailWindowController {
     }
 
     this.showAppNotification(
-      "Prospect Mail: Sign in required",
-      "Outlook requires you to sign in again. Click here to open Prospect Mail."
+      `${APP_NAME}: Sign in required`,
+      `Outlook requires you to sign in again. Click here to open ${APP_NAME}.`
     );
   }
 
@@ -419,8 +421,8 @@ class MailWindowController {
       autoHideMenuBar: true,
 
       show: false,
-      title: "Prospect Mail",
-      icon: path.join(__dirname, "../../assets/outlook_linux_black.png"),
+      title: APP_NAME,
+      icon: APP_ICON,
       webPreferences: {
         contextIsolation: true,
         nodeIntegration: false,
@@ -763,7 +765,7 @@ class MailWindowController {
     const notification = new Notification({
       title,
       body,
-      icon: path.join(__dirname, "../../assets/outlook_linux_black.png"),
+      icon: APP_ICON,
     });
     notification.on("click", () => this.show());
     notification.show();

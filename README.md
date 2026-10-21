@@ -1,12 +1,11 @@
-# Prospect Mail
+# Harbour Mail
 
-<img src="build/icon.png" alt="logo" height="80" align="center" />
+<img src="build/icon.png" alt="Harbour Mail logo" height="80" align="center" />
 
-[![Build & Release](https://github.com/julian-alarcon/prospect-mail/actions/workflows/build-release.yml/badge.svg)](https://github.com/julian-alarcon/prospect-mail/actions/workflows/build-release.yml)
-[![Latest release](https://img.shields.io/github/v/release/julian-alarcon/prospect-mail)](https://github.com/julian-alarcon/prospect-mail/releases/latest)
-[![GitHub all releases](https://img.shields.io/github/downloads/julian-alarcon/prospect-mail/total)](https://github.com/julian-alarcon/prospect-mail/releases)
+[![Build & Release](https://github.com/nitsiosa/prospect-mail/actions/workflows/build-release.yml/badge.svg)](https://github.com/nitsiosa/prospect-mail/actions/workflows/build-release.yml)
 
-Unofficial email Outlook client using Electron. It uses the
+Harbour Mail is an unofficial Microsoft Outlook desktop client based on the
+MIT-licensed Prospect Mail project. It uses the
 [Web App](https://www.microsoft.com/en-us/microsoft-365/outlook/web-email-login-for-outlook)
 and wraps it as a standalone application using Electron. This only works for
 Microsoft/Office 365 accounts, don't use it for personal Outlook.com accounts.
@@ -17,11 +16,10 @@ Available for Linux, Windows (10+) and macOS.
 > This project has NO DIRECT AFFILIATION with Microsoft, Microsoft 365 or any
 > product made by Microsoft.
 
-## Download
+## Build artifacts
 
-The application can be downloaded from [release page](https://github.com/julian-alarcon/prospect-mail/releases).
-
-Select the appropriated file depending on your OS:
+This Harbour Mail fork is currently distributed as a tested prototype build.
+Build from this repository and select the appropriate artifact for your OS:
 
 - Windows: `.exe` file or `.msi` file
 - macOS: `.dmg` file
@@ -37,21 +35,14 @@ Just double-click and follow the Installer steps.
 
 ### macOS
 
-Double-click the `dmg` file and drag the blue Prospect Mail icon to the App
+Double-click the `dmg` file and drag the Harbour Mail icon to the App
 folder
 
 ### Linux
 
-Snap builds are available in the Snap Store.
-
-[![Get it from the Snap Store](https://snapcraft.io/static/images/badges/en/snap-store-black.svg)](https://snapcraft.io/prospect-mail)
-
-Or use `sudo snap install prospect-mail` from the terminal.
-
-Arch Linux has a community published artifact available in
-[AUR here](https://aur.archlinux.org/packages/prospect-mail-bin/).
-
-For other distributions please follow your specific steps.
+Install the locally built `.deb`, AppImage, Flatpak, RPM, pacman, Snap or
+tarball artifact. The technical package/executable name remains
+`prospect-mail` for upgrade and profile compatibility.
 
 ## Screenshots
 
@@ -68,7 +59,7 @@ flag `prospect-mail --minimized`
 - Dock tray support
 - System notification
 - Privacy-first calendar notifications (details are opt-in)
-- Safe `mailto:` compose and Teams meeting-link handoff
+- Safe `mailto:` compose with explicit desktop-handler opt-in, plus Teams meeting-link handoff
 - Native Wayland launcher with an explicit X11 fallback
 - Connect to standard or custom Outlook URL
 - Spellcheck using native Outlook MS Editor
@@ -82,6 +73,10 @@ flag `prospect-mail --minimized`
 
 Via tray menu `settings.json` can be opened and edited. After every save you
 need to click in "Reload settings" to apply changes.
+
+On installed Linux packages, **Settings → Use Harbour Mail for Mail Links…**
+offers an explicit, reversible `mailto:` default-handler choice. Installing the
+package alone does not register or change the desktop mail handler.
 
 ### Available Settings
 
@@ -132,10 +127,10 @@ need to click in "Reload settings" to apply changes.
 
 ### Example Configuration for Personal Outlook
 
-This configuration will let you use Prospect with personal Outlook.com account:
+This configuration will let you use Harbour Mail with a personal Outlook.com account:
 
 > [!WARNING]
-> Please notice that Prospect Mail is only tested in Work/Educational accounts
+> Please notice that Harbour Mail is only tested in Work/Educational accounts
 > and no issues will be reviewed on use for personal accounts.
 
 ```json
@@ -163,7 +158,7 @@ Clone the repository and run in development mode.
 (You need to have [git](https://git-scm.com/) and node installed)
 
 ```shell
-git clone https://github.com/julian-alarcon/prospect-mail.git
+git clone https://github.com/nitsiosa/prospect-mail.git
 cd prospect-mail
 npm install
 npm start
@@ -221,7 +216,7 @@ coding standards, and the release process.
 
 ## License
 
-[MIT](https://github.com/julian-alarcon/prospect-mail/blob/master/LICENSE) by
-[Julian Alarcon](https://desentropia.com) based on
+[MIT](LICENSE). Harbour Mail retains the original Prospect Mail copyright and
+attribution by [Julian Alarcon](https://desentropia.com), based on
 [electron-outlook](https://github.com/eNkru/electron-outlook) by
 [Howard J](https://enkru.github.io/)

@@ -29,6 +29,10 @@ const settings = new Store({
     //   "inbox"     — the Inbox folder only (default, original behaviour)
     //   "favorites" — sum of unread across the Outlook Favorites folders
     unreadNotificationSource: "inbox",
+    // Linux mailto integration is opt-in from the tray menu. The package does
+    // not advertise itself as a handler until the user explicitly confirms.
+    mailtoHandlerEnabled: false,
+    previousMailtoHandler: undefined,
     customBrowserPath: undefined
   }
 });

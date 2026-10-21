@@ -10,6 +10,7 @@ const settings = require("../settings");
 const path = require("path");
 const fs = require("fs");
 const { openAboutWindow } = require("./about-window");
+const { MailtoHandler } = require("./mailto-handler");
 
 const macOS = process.platform === "darwin";
 
@@ -20,6 +21,11 @@ const macOS = process.platform === "darwin";
 class TrayController {
   constructor(mailController) {
     this.mailController = mailController;
+    const mailtoHandler =
+      process.platform === "linux" ? new MailtoHandler() : null;
+    this.mailtoHandler = mailtoHandler?.isAvailable()
+      ? mailtoHandler
+      : null;
     this.init();
   }
 
@@ -107,6 +113,17 @@ class TrayController {
             click: () => this.toggleNotificationContent(),
           },
           { type: "separator" },
+          ...(this.mailtoHandler
+            ? [
+                {
+                  label: this.mailtoHandler.isEnabled()
+                    ? "Restore Previous Mail Handler…"
+                    : "Use Harbour Mail for Mail Links…",
+                  click: () => this.toggleMailtoHandler(),
+                },
+                { type: "separator" },
+              ]
+            : []),
           {
             label: "Show Settings File",
             click: () => shell.showItemInFolder(path.resolve(settings.path)),
@@ -125,7 +142,7 @@ class TrayController {
 
       { type: "separator" },
       {
-        label: "About Prospect Mail",
+        label: "About Harbour Mail",
         click: () => openAboutWindow(),
       },
       { label: "Quit", click: () => this.cleanupAndQuit() },
@@ -140,20 +157,16 @@ class TrayController {
 
     if (macOS) {
       iconPath = isUnread
-        ? "../../assets/outlook_macOS_unread.png"
-        : "../../assets/outlook_macOS.png";
+        ? "../../assets/harbour_mail_unread.png"
+        : "../../assets/harbour_mail.png";
 
-      const trayIcon = nativeImage.createFromPath(
-        path.join(__dirname, iconPath)
-      );
-      trayIcon.setTemplateImage(true);
-      return trayIcon;
+      return nativeImage.createFromPath(path.join(__dirname, iconPath));
     }
 
     // For non-macOS platforms
     iconPath = isUnread
-      ? "../../assets/outlook_linux_unread.png"
-      : "../../assets/outlook_linux_black.png";
+      ? "../../assets/harbour_mail_unread.png"
+      : "../../assets/harbour_mail.png";
 
     return nativeImage.createFromPath(path.join(__dirname, iconPath));
   }
@@ -206,6 +219,16 @@ class TrayController {
     this.buildContextMenu();
     this.mailController.reloadWindow();
   }
+  async toggleMailtoHandler() {
+    try {
+      if (await this.mailtoHandler.toggle()) this.buildContextMenu();
+    } catch {
+      dialog.showErrorBox(
+        "Mail Link Setup Failed",
+        "Harbour Mail could not update the desktop mail-link preference."
+      );
+    }
+  }
 
   restoreDefaultSettings() {
     dialog
@@ -219,9 +242,12 @@ class TrayController {
         detail:
           "This will restore all settings to their factory defaults but preserve your app data.",
       })
-      .then(({ response }) => {
+      .then(async ({ response }) => {
         if (response === 1) {
           try {
+            if (this.mailtoHandler?.isEnabled()) {
+              await this.mailtoHandler.disable({ confirm: false });
+            }
             // Create backup of current settings
             const settingsPath = settings.path;
             const backupPath = `${settingsPath}.bak-${Date.now()}`;
@@ -261,6 +287,9 @@ class TrayController {
     const userDataPath = app.getPath("userData");
 
     try {
+      if (this.mailtoHandler?.isEnabled()) {
+        await this.mailtoHandler.disable({ confirm: false });
+      }
       await fs.promises.rm(userDataPath, { recursive: true, force: true });
 
       await dialog.showMessageBox({

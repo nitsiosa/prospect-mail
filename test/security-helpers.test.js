@@ -103,17 +103,17 @@ test("notification content is generic unless details are enabled", () => {
     details: "Private event\nAnother event",
   };
   assert.deepEqual(buildNotificationContent(request, false), {
-    title: "Prospect Mail: 2 Calendar Reminders",
-    body: "Open Prospect Mail to view the reminders.",
+    title: "Harbour Mail: 2 Calendar Reminders",
+    body: "Open Harbour Mail to view the reminders.",
   });
   assert.deepEqual(buildNotificationContent(request, true), {
-    title: "Prospect Mail: 2 Calendar Reminders",
+    title: "Harbour Mail: 2 Calendar Reminders",
     body: "Private event\nAnother event",
   });
   assert.deepEqual(
     buildNotificationContent({ kind: "mail", count: 4, details: "" }, true),
     {
-      title: "Prospect Mail: New Messages",
+      title: "Harbour Mail: New Messages",
       body: "There are 4 unread messages.",
     }
   );

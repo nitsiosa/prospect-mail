@@ -32,6 +32,6 @@ fi
 if command -v node >/dev/null 2>&1; then
   major="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
   if [ "$major" -ne 24 ] 2>/dev/null; then
-    echo 'NOTE: Prospect Mail upstream requests Node.js 24.x. Use an existing version manager if needed.'
+    echo 'NOTE: Harbour Mail (from Prospect Mail upstream) requests Node.js 24.x. Use an existing version manager if needed.'
   fi
 fi

@@ -8,7 +8,7 @@ const {
 test("extracts a valid mailto argument from packaged and development argv", () => {
   assert.equal(
     extractMailtoArgument([
-      "/opt/Prospect Mail/prospect-mail",
+      "/opt/Harbour Mail/prospect-mail",
       "--ozone-platform=wayland",
       "mailto:user+tag@example.com?subject=Hello%20World",
     ]),

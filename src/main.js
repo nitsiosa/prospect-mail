@@ -34,7 +34,7 @@ if (process.platform === "linux") {
 //Store commandline for global purpose
 global.cmdLine = process.argv;
 
-class ProspectMail {
+class HarbourMail {
   constructor() {
     this.mailController = null;
     this.trayController = null;
@@ -98,4 +98,4 @@ class ProspectMail {
   }
 }
 
-new ProspectMail().init();
+new HarbourMail().init();

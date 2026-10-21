@@ -1,24 +1,25 @@
 {
   "name": "prospect-mail",
-  "productName": "Prospect Mail",
+  "productName": "Harbour Mail",
   "desktopName": "prospect-mail",
   "version": "1.3.1",
   "main": "src/main.js",
-  "description": "Unofficial desktop mail client for Microsoft Outlook",
-  "homepage": "https://github.com/julian-alarcon/prospect-mail",
+  "description": "Harbour Mail, an unofficial desktop client for Microsoft Outlook",
+  "homepage": "https://github.com/nitsiosa/prospect-mail",
   "keywords": [
     "Electron",
     "Outlook",
     "Microsoft",
     "Outlook Desktop",
-    "Prospect"
+    "Prospect",
+    "Harbour Mail"
   ],
   "repository": {
     "type": "git",
-    "url": "git+ssh://github.com/julian-alarcon/prospect-mail"
+    "url": "git+ssh://github.com/nitsiosa/prospect-mail"
   },
   "bugs": {
-    "url": "https://github.com/julian-alarcon/prospect-mail/issues"
+    "url": "https://github.com/nitsiosa/prospect-mail/issues"
   },
   "author": {
     "name": "Julian Alarcon",
@@ -83,8 +84,8 @@
     "files": [
       "src/**/*",
       "public/**/*",
-      "assets/**/*",
-      "misc/prospect-logo.svg",
+      "assets/harbour_mail*.png",
+      "misc/harbour-logo.svg",
       "package.json",
       "LICENSE",
       "node_modules/**/*"
@@ -97,17 +98,14 @@
       "packageCategory": "net",
       "executableName": "prospect-mail",
       "syncDesktopName": true,
-      "mimeTypes": [
-        "x-scheme-handler/mailto"
-      ],
       "executableArgs": [
         "--ozone-platform=wayland"
       ],
-      "synopsis": "Prospect Mail, unofficial desktop mail client for Microsoft Outlook",
+      "synopsis": "Harbour Mail, unofficial desktop client for Microsoft Outlook",
       "desktop": {
         "entry": {
-          "Name": "Prospect Mail",
-          "Comment": "Unofficial desktop mail client for Microsoft Outlook",
+          "Name": "Harbour Mail",
+          "Comment": "Unofficial desktop client for Microsoft Outlook",
           "StartupWMClass": "prospect-mail",
           "StartupNotify": "true",
           "X-GNOME-UsesNotifications": "true",
@@ -115,7 +113,7 @@
         },
         "desktopActions": {
           "X11": {
-            "Name": "Launch using X11",
+            "Name": "Launch Harbour Mail using X11",
             "Exec": "prospect-mail --ozone-platform=x11 %U"
           }
         }

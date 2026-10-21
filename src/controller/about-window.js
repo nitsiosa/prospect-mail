@@ -3,9 +3,9 @@ const path = require("path");
 
 let aboutWindow = null;
 const ABOUT_LINKS = Object.freeze({
-  github: "https://github.com/julian-alarcon/prospect-mail",
+  github: "https://github.com/nitsiosa/prospect-mail",
   donate: "https://github.com/sponsors/julian-alarcon",
-  issues: "https://github.com/julian-alarcon/prospect-mail/issues",
+  issues: "https://github.com/nitsiosa/prospect-mail/issues",
 });
 
 /**
@@ -30,7 +30,7 @@ function openAboutWindow() {
     fullscreenable: false,
     frame: false,
     transparent: true,
-    title: "About Prospect Mail",
+    title: "About Harbour Mail",
     autoHideMenuBar: true,
     backgroundColor: '#00000000',
     webPreferences: {
