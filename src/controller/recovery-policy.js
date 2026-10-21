@@ -21,20 +21,31 @@ const RECOVERABLE_NET_ERRORS = new Set([
 function shouldReloadForNetworkFailure({
   errorCode,
   isMainFrame,
+  isFocused,
+  recoveryPending,
   now,
   lastReloadAt,
 }) {
   return (
     isMainFrame === true &&
+    isFocused !== true &&
+    recoveryPending !== true &&
     RECOVERABLE_NET_ERRORS.has(errorCode) &&
     now - lastReloadAt >= NETWORK_RELOAD_MIN_INTERVAL_MS
   );
 }
 
-function decideAuthRecovery({ reason, isFocused, now, lastReloadAt }) {
+function decideAuthRecovery({
+  reason,
+  isFocused,
+  isVisible,
+  now,
+  lastReloadAt,
+}) {
   if (
     reason !== "session-expired" ||
     isFocused ||
+    isVisible ||
     now - lastReloadAt < AUTH_RECOVERY_COOLDOWN_MS
   ) {
     return { action: "notify", lastReloadAt };

@@ -85,6 +85,7 @@ class MailWindowController {
     initialMinimization.domReady = hasMinimizedFlag || startMinimizedSetting;
 
     this.lastNetworkReloadAt = 0;
+    this.networkRecoveryPending = false;
     this.lastAuthRecoveryReloadAt = 0;
     this.onUnreadChanged = null;
     this.ownedWebContents = new Set();
@@ -364,6 +365,7 @@ class MailWindowController {
     const decision = decideAuthRecovery({
       reason,
       isFocused: this.win.isFocused(),
+      isVisible: this.win.isVisible(),
       now: Date.now(),
       lastReloadAt: this.lastAuthRecoveryReloadAt,
     });
@@ -586,6 +588,8 @@ class MailWindowController {
           !shouldReloadForNetworkFailure({
             errorCode,
             isMainFrame,
+            isFocused: this.win.isFocused(),
+            recoveryPending: this.networkRecoveryPending,
             now,
             lastReloadAt: this.lastNetworkReloadAt,
           })
@@ -593,10 +597,14 @@ class MailWindowController {
           return;
         }
         this.lastNetworkReloadAt = now;
+        this.networkRecoveryPending = true;
         console.log(`[Network] Recovering main-frame load error ${errorCode}`);
         this.reloadWindowSilently();
       }
     );
+    this.win.webContents.on("did-finish-load", () => {
+      this.networkRecoveryPending = false;
+    });
 
     // After resuming from sleep, cookies may have expired during suspend.
     // Clean them so Outlook doesn't show a stale session state.

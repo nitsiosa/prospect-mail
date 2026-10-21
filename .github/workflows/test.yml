@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Install Node.js and NPM
         uses: actions/setup-node@v7

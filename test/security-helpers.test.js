@@ -134,12 +134,13 @@ test("download filenames cannot escape the selected directory or hide content", 
   assert.ok(sanitizeDownloadFilename(`${"a".repeat(300)}.pdf`).endsWith(".pdf"));
 });
 
-test("auth recovery reloads once in the background and then notifies", () => {
+test("auth recovery reloads only when hidden and then notifies", () => {
   const now = 1_000_000;
   assert.deepEqual(
     decideAuthRecovery({
       reason: "login-page",
       isFocused: false,
+      isVisible: false,
       now,
       lastReloadAt: 0,
     }),
@@ -149,6 +150,7 @@ test("auth recovery reloads once in the background and then notifies", () => {
     decideAuthRecovery({
       reason: "session-expired",
       isFocused: true,
+      isVisible: true,
       now,
       lastReloadAt: 0,
     }),
@@ -158,6 +160,7 @@ test("auth recovery reloads once in the background and then notifies", () => {
     decideAuthRecovery({
       reason: "session-expired",
       isFocused: false,
+      isVisible: false,
       now,
       lastReloadAt: 0,
     }),
@@ -167,19 +170,32 @@ test("auth recovery reloads once in the background and then notifies", () => {
     decideAuthRecovery({
       reason: "session-expired",
       isFocused: false,
+      isVisible: false,
       now: now + AUTH_RECOVERY_COOLDOWN_MS - 1,
+      lastReloadAt: now,
+    }),
+    { action: "notify", lastReloadAt: now }
+  );
+  assert.deepEqual(
+    decideAuthRecovery({
+      reason: "session-expired",
+      isFocused: false,
+      isVisible: true,
+      now: now + AUTH_RECOVERY_COOLDOWN_MS,
       lastReloadAt: now,
     }),
     { action: "notify", lastReloadAt: now }
   );
 });
 
-test("network recovery is main-frame, error-code, and interval limited", () => {
+test("network recovery is main-frame, focus, pending, and interval limited", () => {
   const now = 1_000_000;
   assert.equal(
     shouldReloadForNetworkFailure({
       errorCode: -106,
       isMainFrame: true,
+      isFocused: false,
+      recoveryPending: false,
       now,
       lastReloadAt: 0,
     }),
@@ -189,6 +205,8 @@ test("network recovery is main-frame, error-code, and interval limited", () => {
     shouldReloadForNetworkFailure({
       errorCode: -106,
       isMainFrame: false,
+      isFocused: false,
+      recoveryPending: false,
       now,
       lastReloadAt: 0,
     }),
@@ -198,6 +216,8 @@ test("network recovery is main-frame, error-code, and interval limited", () => {
     shouldReloadForNetworkFailure({
       errorCode: -3,
       isMainFrame: true,
+      isFocused: false,
+      recoveryPending: false,
       now,
       lastReloadAt: 0,
     }),
@@ -207,7 +227,31 @@ test("network recovery is main-frame, error-code, and interval limited", () => {
     shouldReloadForNetworkFailure({
       errorCode: -106,
       isMainFrame: true,
+      isFocused: false,
+      recoveryPending: false,
       now: now + NETWORK_RELOAD_MIN_INTERVAL_MS - 1,
+      lastReloadAt: now,
+    }),
+    false
+  );
+  assert.equal(
+    shouldReloadForNetworkFailure({
+      errorCode: -106,
+      isMainFrame: true,
+      isFocused: true,
+      recoveryPending: false,
+      now: now + NETWORK_RELOAD_MIN_INTERVAL_MS,
+      lastReloadAt: now,
+    }),
+    false
+  );
+  assert.equal(
+    shouldReloadForNetworkFailure({
+      errorCode: -106,
+      isMainFrame: true,
+      isFocused: false,
+      recoveryPending: true,
+      now: now + NETWORK_RELOAD_MIN_INTERVAL_MS,
       lastReloadAt: now,
     }),
     false
