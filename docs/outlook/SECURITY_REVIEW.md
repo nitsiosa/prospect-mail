@@ -1,12 +1,12 @@
-# Security review — Outlook Wayland release candidate
+# Security review — Harbour Mail Wayland release candidate
 
 Date: 2026-10-21
 
-Source commit: `261eca85133e1ee9521dab654ca2a96543fa5e3e`
+Source commit: `22178ca7f030040c6fce8d14a43cd92130c178e2`
 
 Artifact: `dist/prospect-mail_1.3.1_amd64.deb`
 
-SHA256: `e242ff4797d2516e2d56d3a8027b588ec383ab67e531a035a37da939d15373e7`
+SHA256: `f1521baab78d288bda2a3bf7b69452e96a47a758f54d54180d4f696d5bccec73`
 
 ## Result
 
@@ -26,8 +26,9 @@ No unresolved high-risk source or packaged-runtime finding was identified. All p
 - Attachment downloads receive a sanitised basename and Electron save-dialog options. The app does not set a silent save path, execute or auto-open downloads.
 - Production logs contain no full URLs, auth query strings, cookie values, subjects, event details, attachment names or profile paths. Calendar notification details are opt-in and off by default.
 - Auth recovery reloads only a hidden window. Network recovery never reloads while focused and permits only one hidden retry until a successful main-frame load, preventing repeated draft disruption.
-- The Linux package advertises `mailto:` capability but contains no code that changes the user's default handler.
+- The Linux package contains no system `mailto:` association. A fixed user-level desktop entry and `xdg-mime` call are used only after an explicit tray confirmation; the previous handler is validated, stored and restorable.
 - The packaged app archive contains required runtime files and MIT license, but excludes tests, smoke harnesses, Cursor instructions, scripts and implementation documents.
+- Harbour Mail changes only user-visible branding/artwork; the package, executable, app ID and profile IDs remain stable, avoiding credential/session migration.
 - The Core24 Snap desktop fix is an exact, validated backport of merged electron-builder PR #10176. Its postinstall patch is idempotent, checks exact markers and is excluded from the runtime archive.
 - Release workflows use read-only permissions by default, do not persist checkout credentials, and expose GitHub/Snap publish credentials only to tag-only publish/upload steps. Release-note tag input is passed through the environment, verified as an existing tag, and supplied to Git through `execFileSync` arguments rather than a shell.
 
@@ -42,7 +43,7 @@ No unresolved high-risk source or packaged-runtime finding was identified. All p
 
 ## Test-only sandbox exception
 
-Ubuntu AppArmor prevents Chromium from starting sandboxed from an arbitrary source checkout. The private headless-GNOME smoke script therefore sets `ELECTRON_DISABLE_SANDBOX=1` for that test process only. It verifies native Ozone Wayland behavior, BrowserWindow preferences, preload isolation, notification IPC and mailto routing. It is excluded from `app.asar`; installed-package sandbox execution is still `NEEDS_HUMAN`.
+Ubuntu AppArmor prevents Chromium from starting sandboxed from an arbitrary source checkout. The private headless-GNOME smoke script therefore sets `ELECTRON_DISABLE_SANDBOX=1` for that test process only. It verifies native Ozone Wayland behavior, BrowserWindow preferences, preload isolation, notification IPC and mailto routing. It is excluded from `app.asar`. The installed package was subsequently verified with the AppArmor profile attached, native Wayland arguments, `--enable-sandbox`, `NoNewPrivs=1` and renderer `Seccomp=2`.
 
 ## Residual risks and limitations
 

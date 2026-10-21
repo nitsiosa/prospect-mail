@@ -2,19 +2,21 @@
 
 ## Candidate
 
-- Source commit: `261eca85133e1ee9521dab654ca2a96543fa5e3e`
+- Source commit: `22178ca7f030040c6fce8d14a43cd92130c178e2`
 - Branch: `feat/outlook-wayland-ubuntu`
 - Fork: <https://github.com/nitsiosa/prospect-mail>
 - Draft PR: <https://github.com/nitsiosa/prospect-mail/pull/1>
 - Debian package: `dist/prospect-mail_1.3.1_amd64.deb`
 - Package name/version/architecture: `prospect-mail` / `1.3.1` / `amd64`
-- SHA256: `e242ff4797d2516e2d56d3a8027b588ec383ab67e531a035a37da939d15373e7`
-- Node tests: 48 passed, 0 failed
+- SHA256: `f1521baab78d288bda2a3bf7b69452e96a47a758f54d54180d4f696d5bccec73`
+- Node tests: 54 passed, 0 failed
 - Production dependency audit: 0 vulnerabilities
 - Packaged archive native-Wayland smoke: passed with a synthetic Outlook page
-- Installed sandbox runtime: `NEEDS_HUMAN` (static package/AppArmor checks passed)
+- Installed sandbox runtime: passed (AppArmor attached; native Wayland; renderer sandbox, `NoNewPrivs=1`, `Seccomp=2`)
 
-No package was installed while producing this candidate, no OS default was changed, and no Microsoft account was used.
+The package was upgraded in place and launched without migrating or deleting
+the existing profile. The Thunderbird `mailto:` default remained selected.
+Automation did not access credentials or inspect Microsoft account content.
 
 ## Reproduce the build
 
@@ -33,12 +35,13 @@ Review without installation:
 ```bash
 dpkg-deb --info dist/prospect-mail_1.3.1_amd64.deb
 dpkg-deb --contents dist/prospect-mail_1.3.1_amd64.deb
-echo 'e242ff4797d2516e2d56d3a8027b588ec383ab67e531a035a37da939d15373e7  dist/prospect-mail_1.3.1_amd64.deb' | sha256sum -c -
+echo 'f1521baab78d288bda2a3bf7b69452e96a47a758f54d54180d4f696d5bccec73  dist/prospect-mail_1.3.1_amd64.deb' | sha256sum -c -
 ```
 
 ## Install on Ubuntu
 
-First record the current mail handler; installation registers Prospect Mail as a choice but must not change this value:
+First record the current mail handler. Installation does not register Harbour
+Mail for `mailto:` links and must not change this value:
 
 ```bash
 xdg-mime query default x-scheme-handler/mailto
@@ -48,7 +51,7 @@ xdg-mime query default x-scheme-handler/mailto
 
 If version 1.3.1 is already installed, use `sudo apt install --reinstall ./dist/prospect-mail_1.3.1_amd64.deb`.
 
-Launch “Prospect Mail” from GNOME. Its primary desktop entry explicitly uses native Wayland. CLI equivalents:
+Launch “Harbour Mail” from GNOME. Its primary desktop entry explicitly uses native Wayland. CLI equivalents:
 
 ```bash
 prospect-mail --ozone-platform=wayland
@@ -71,7 +74,7 @@ Use only an approved test recipient, expendable test message/event and non-sensi
 8. Without changing the OS default, test compose directly:
 
    ```bash
-   prospect-mail 'mailto:test-recipient@example.invalid?subject=Prospect%20Mail%20test&body=Line%201%0ALine%202'
+   prospect-mail 'mailto:test-recipient@example.invalid?subject=Harbour%20Mail%20test&body=Line%201%0ALine%202'
    ```
 
    Replace the placeholder with an approved address and confirm one existing app window shows correctly populated fields.
@@ -84,17 +87,15 @@ Record only PASS/FAIL, package hash, Ubuntu version and privacy-redacted error c
 
 Only if desired after the direct test:
 
-```bash
-previous_mail_handler="$(xdg-mime query default x-scheme-handler/mailto)"
-xdg-mime default prospect-mail.desktop x-scheme-handler/mailto
-xdg-open 'mailto:test-recipient@example.invalid?subject=Prospect%20Mail%20handler%20test'
-```
+1. Open the tray menu.
+2. Choose **Settings → Use Harbour Mail for Mail Links…**.
+3. Read the confirmation and choose **Use Harbour Mail**.
+4. Verify `xdg-mime query default x-scheme-handler/mailto` returns
+   `harbour-mail-mailto.desktop`, then test an approved `xdg-open 'mailto:…'`.
+5. To undo the choice, use **Settings → Restore Previous Mail Handler…**.
 
-Restore the previous handler in the same shell with:
-
-```bash
-xdg-mime default "$previous_mail_handler" x-scheme-handler/mailto
-```
+The opt-in stores and restores the previously selected handler. The system
+package itself deliberately contains no `mailto:` association.
 
 ## Uninstall and rollback
 
@@ -102,4 +103,10 @@ xdg-mime default "$previous_mail_handler" x-scheme-handler/mailto
 sudo apt remove prospect-mail
 ```
 
-Removal unloads/removes the package AppArmor profile and executable alternative. It intentionally preserves `~/.config/prospect-mail`, including the ordinary Electron session/profile, so uninstall does not destroy account data. Do not delete that directory unless the user separately decides to remove the local profile and understands that sign-in/session data will be lost.
+Before uninstalling, restore the previous mail handler from the tray if the
+optional integration was enabled. Removal unloads/removes the package AppArmor
+profile and executable alternative. It intentionally preserves
+`~/.config/prospect-mail`, including the ordinary Electron session/profile, so
+uninstall does not destroy account data. Do not delete that directory unless
+the user separately decides to remove the local profile and understands that
+sign-in/session data will be lost.

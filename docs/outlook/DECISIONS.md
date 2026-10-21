@@ -22,8 +22,8 @@ Rationale: Local configuration should not turn an arbitrary remote origin into p
 
 ## D-006: `mailto:` capability without changing the default
 Date: 2026-10-21
-Decision: Advertise `x-scheme-handler/mailto` in Linux package metadata, parse bounded RFC 6068-style fields in the main process, and navigate to Outlook's `/mail/deeplink/compose` URL. Do not call APIs or commands that make Prospect Mail the default handler.
-Rationale: The desktop can offer Prospect Mail as a choice while leaving the user's current Thunderbird default unchanged.
+Decision: Keep `mailto:` parsing/compose support in the main process, but do not advertise the system package as a handler. Offer an explicit tray confirmation that creates a user-level desktop handler, stores the previous default and restores it on request.
+Rationale: Real installation showed that adding `MimeType=x-scheme-handler/mailto` to a system desktop file can change Ubuntu's fallback default even without an explicit `xdg-mime default` call. User-level opt-in is the only reliable way to preserve the current handler.
 
 ## D-007: Teams protocol with browser fallback
 Date: 2026-10-21
@@ -64,3 +64,8 @@ Rationale: Both remote Linux builds deterministically failed because electron-bu
 Date: 2026-10-21
 Decision: Never auto-reload a focused network failure or a visible auth-expired window; allow only one hidden network recovery until a successful load. Keep CI read-only by default, do not persist checkout credentials, scope publish credentials to tag-only steps, and pass verified tag refs to Git without a shell.
 Rationale: A background recovery must not repeatedly disrupt a visible draft. Build-time package scripts do not need release credentials, and workflow-dispatch input must not be shell-interpolated.
+
+## D-015: Harbour Mail user-visible brand with stable technical identity
+Date: 2026-10-21
+Decision: Rename the product, windows, notifications, tray, About UI and package artwork to Harbour Mail using the user-supplied Harbour Tide icon. Retain `prospect-mail` as the package, executable, desktop filename, app ID and profile directory.
+Rationale: Stable technical IDs let the rebrand upgrade the existing installation and reuse its Microsoft session without creating a duplicate package/profile or migrating authentication data.

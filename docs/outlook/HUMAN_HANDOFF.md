@@ -1,6 +1,6 @@
 # Microsoft 365 human handoff
 
-Local candidate source: `261eca85133e1ee9521dab654ca2a96543fa5e3e` on `feat/outlook-wayland-ubuntu`
+Local candidate source: `22178ca7f030040c6fce8d14a43cd92130c178e2` on `feat/outlook-wayland-ubuntu`
 
 Fork: <https://github.com/nitsiosa/prospect-mail>
 
@@ -8,11 +8,11 @@ Draft PR: <https://github.com/nitsiosa/prospect-mail/pull/1>
 
 Artifact: `dist/prospect-mail_1.3.1_amd64.deb`
 
-SHA256: `e242ff4797d2516e2d56d3a8027b588ec383ab67e531a035a37da939d15373e7`
+SHA256: `f1521baab78d288bda2a3bf7b69452e96a47a758f54d54180d4f696d5bccec73`
 
 ## Automatically verified
 
-- 48 Node tests pass, including URL attacks, Teams/mailto, IPC, draft-safe recovery, release-input/credential security, notification privacy, filename sanitisation, the Core24 packaging backport and static Electron/package controls.
+- 54 Node tests pass, including Harbour branding/artwork, opt-in mailto integration, URL attacks, Teams/mailto parsing, IPC, draft-safe recovery, release-input/credential security, notification privacy, filename sanitisation, the Core24 packaging backport and static Electron/package controls.
 - Native-Wayland synthetic smoke passes for source and packaged `app.asar`: secure main/popup preferences, no popup IPC, notification IPC, one app window and mailto compose.
 - Production dependency audit has 0 vulnerabilities.
 - Debian build, control scripts, desktop entry, Wayland/X11 actions, `mailto:` MIME declaration, AppArmor payload, file permissions and packaged archive allowlist pass.

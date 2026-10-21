@@ -27,14 +27,14 @@ States must be one of: `AUTO_PASS`, `HUMAN_PASS`, `FAIL`, `BLOCKED`, `NOT_RUN`. 
 
 ## Current candidate evidence
 
-Recorded 2026-10-21 on Ubuntu 24.04.5 GNOME Wayland x86_64, source commit `261eca85133e1ee9521dab654ca2a96543fa5e3e`, package SHA256 `e242ff4797d2516e2d56d3a8027b588ec383ab67e531a035a37da939d15373e7`.
+Recorded 2026-10-21 on Ubuntu 24.04.5 GNOME Wayland x86_64, source commit `22178ca7f030040c6fce8d14a43cd92130c178e2`, package SHA256 `f1521baab78d288bda2a3bf7b69452e96a47a758f54d54180d4f696d5bccec73`.
 
 `AUTO_PASS`:
 
 - T01: explicit secure BrowserWindow preferences and packaged no-bypass checks pass; synthetic source and packaged-archive smoke reports sandboxed renderers. Installed Chromium sandbox launch remains part of T18's human install check.
 - T13: scheme, lookalike, userinfo, malformed and encoded attack cases pass.
 - T14: trusted-source native-protocol rules, secure popup isolation and federated redirect policy pass.
-- T19: `npm test` passes 48/48, including the original upstream tests.
+- T19: `npm test` passes 54/54, including the original upstream tests.
 - T20: focused log/static checks pass; no secret-like material was found in changed source/fixtures.
 
 Automated portions pass, but the end-to-end test remains `NOT_RUN` until live validation:
@@ -45,7 +45,7 @@ Automated portions pass, but the end-to-end test remains `NOT_RUN` until live va
 - T15: save-dialog/no-execution checks pass; real attachments are not run.
 - T16: auth/network reload policy tests pass; suspend/network draft preservation is not run.
 - T17: single-instance/focus paths and a private native-Wayland smoke pass; installed launcher/tray behavior is not run.
-- T18: `.deb` build, metadata, desktop validation, control-script syntax, payload permissions and archive allowlist pass; install/uninstall and installed sandbox runtime are not run.
+- T18: `.deb` build, metadata, desktop validation, control-script syntax, payload permissions, archive allowlist, in-place install and installed sandbox/runtime checks pass; uninstall is not run.
 
 T02–T05 and T07 are `NOT_RUN` because they require the user's authorised Microsoft 365 session. No test is marked `HUMAN_PASS`.
 

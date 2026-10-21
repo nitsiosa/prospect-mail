@@ -4,7 +4,7 @@
 Ubuntu GNOME / Wayland
   ├── .desktop launcher / xdg-open / MIME handlers
   ├── GNOME notifications, tray (if shell extension available)
-  └── Electron application (Prospect Mail)
+  └── Electron application (Harbour Mail; Prospect Mail-compatible technical IDs)
        ├── src/main.js — startup, userData profile and desktop app-id
        ├── src/settings.js — settings and migration
        ├── src/controller/mail-window-controller.js — window, OWA navigation, SSO recovery, routing
