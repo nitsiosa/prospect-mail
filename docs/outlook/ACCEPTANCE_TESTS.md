@@ -25,6 +25,30 @@ States must be one of: `AUTO_PASS`, `HUMAN_PASS`, `FAIL`, `BLOCKED`, `NOT_RUN`. 
 | T19 | Existing upstream Node test suite passes | automated | No |
 | T20 | No secrets, mailbox content or full auth URLs logged in production | static review + focused test | No |
 
+## Current candidate evidence
+
+Recorded 2026-10-21 on Ubuntu 24.04.5 GNOME Wayland x86_64, source commit `997b5517ad2db7353680ea34f4d4a60c5e126bbb`, package SHA256 `a8d7296628c30038ddeb6848694e2ad926f450014615407cdc48e95fd71aa26c`.
+
+`AUTO_PASS`:
+
+- T01: explicit secure BrowserWindow preferences and packaged no-bypass checks pass; synthetic source and packaged-archive smoke reports sandboxed renderers. Installed Chromium sandbox launch remains part of T18's human install check.
+- T13: scheme, lookalike, userinfo, malformed and encoded attack cases pass.
+- T14: trusted-source native-protocol rules, secure popup isolation and federated redirect policy pass.
+- T19: `npm test` passes 43/43, including the original upstream tests.
+- T20: focused log/static checks pass; no secret-like material was found in changed source/fixtures.
+
+Automated portions pass, but the end-to-end test remains `NOT_RUN` until live validation:
+
+- T06: filename/path sanitisation and no-auto-open static check pass; real save/preview is not run.
+- T08–T09: notification schema/privacy and single focus-action tests pass; GNOME delivery/click is not run.
+- T10–T12: mailto, Outlook deep-link and Teams routing tests pass; real Outlook/handler behavior is not run.
+- T15: save-dialog/no-execution checks pass; real attachments are not run.
+- T16: auth/network reload policy tests pass; suspend/network draft preservation is not run.
+- T17: single-instance/focus paths and a private native-Wayland smoke pass; installed launcher/tray behavior is not run.
+- T18: `.deb` build, metadata, desktop validation, control-script syntax, payload permissions and archive allowlist pass; install/uninstall and installed sandbox runtime are not run.
+
+T02–T05 and T07 are `NOT_RUN` because they require the user's authorised Microsoft 365 session. No test is marked `HUMAN_PASS`.
+
 ## Attack-oriented URL tests (do not require Outlook login)
 - `https://outlook.cloud.microsoft.attacker.invalid/mail`, `https://outlook.cloud.microsoft@evil.invalid`, `https://evil.invalid/?redirect=https://outlook.cloud.microsoft/mail` **are not Microsoft hosts**.
 - `javascript:alert(1)`, `file:///etc/passwd`, `data:text/html,...`, `shell:...` should be blocked by external-link router.

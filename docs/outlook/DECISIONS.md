@@ -44,3 +44,13 @@ Rationale: Native Wayland is the target environment; an explicit fallback preser
 Date: 2026-10-21
 Decision: Apply `npm audit fix --package-lock-only --ignore-scripts` without `--force`. This updates electron-builder within the declared compatible range and removes all production audit findings. Do not accept npm's forced downgrade for the remaining development-only `sprintf-js` chain.
 Rationale: The production dependency graph is clean; the forced suggestion changes build tooling in a way npm itself labels breaking and does not affect the packaged runtime.
+
+## D-011: Federated corporate identity redirects
+Date: 2026-10-21
+Decision: Permit a bounded chain of HTTPS hosts learned only from server redirects that begin on a Microsoft login origin. Keep IPC restricted to known Microsoft origins, and do not let ordinary clicks expand the learned chain.
+Rationale: Enterprise Entra flows can redirect through tenant IdPs that cannot be pre-enumerated. Blocking all non-Microsoft main-frame redirects breaks legitimate SAML/MFA, while treating them as privileged origins is unnecessary and unsafe.
+
+## D-012: Minimal packaged payload
+Date: 2026-10-21
+Decision: Package only runtime source/assets, production dependencies and the MIT license. Exclude tests, smoke harnesses, implementation documents, Cursor rules and development scripts from `app.asar`.
+Rationale: Test-only sandbox bypasses and engineering material must not ship, and a smaller allowlisted payload is easier to audit.

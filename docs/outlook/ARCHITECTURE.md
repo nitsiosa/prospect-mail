@@ -8,6 +8,11 @@ Ubuntu GNOME / Wayland
        ├── src/main.js — startup, userData profile and desktop app-id
        ├── src/settings.js — settings and migration
        ├── src/controller/mail-window-controller.js — window, OWA navigation, SSO recovery, routing
+       ├── src/controller/url-router.js — pure URL/protocol parsing and routing policy
+       ├── src/controller/federated-auth-policy.js — bounded tenant IdP redirect chain
+       ├── src/controller/ipc-validation.js — origin/frame/payload IPC validation
+       ├── src/controller/download-security.js — safe suggested attachment filenames
+       ├── src/controller/recovery-policy.js — pure auth/network reload decisions
        ├── src/controller/preload.js — strict IPC facade
        ├── src/controller/tray-controller.js — tray/settings/unread state
        └── public/* — minimal injected Outlook UI observer
@@ -16,9 +21,13 @@ Ubuntu GNOME / Wayland
 
 Microsoft Entra login and Outlook back-end stay on Microsoft's side. The Electron main process should never receive browser auth tokens, email bodies, calendar descriptions or attachment contents unless essential for ordinary browser download workflow. Avoid additional Graph registration/permissions for MVP.
 
+The main Outlook renderer alone receives the narrow preload API. Every IPC message must come from its current main frame on an approved Microsoft origin and pass a channel-specific schema. Detached Outlook/auth windows use an intentionally empty preload.
+
+Ordinary external pages never remain in the app window. An exception exists for enterprise federation: server redirects beginning at a Microsoft login page can learn a bounded HTTPS IdP chain for that `WebContents`. Those pages are still unprivileged because IPC origin checks remain Microsoft-only.
+
 ## Cross-app links
 - Outlook → Teams: recognise known HTTPS Teams invite URLs and supported `msteams:` URLs, then delegate safely to `shell.openExternal` / XDG scheme handler. Use platform's registered handler; do not hardcode the user's Teams binary path or run shell commands with URL interpolation.
-- Teams → Outlook: OS-level `mailto:` and documented Outlook web deep links. Only register the handler in desktop metadata and prompt user to select a default; do not silently replace their browser/email defaults.
+- Teams → Outlook: OS-level `mailto:` and documented Outlook web deep links. The package advertises the handler in desktop metadata but never silently replaces the user's browser/email defaults.
 - Unknown/external links: default browser after validation, with web-content navigation constrained by source-origin and destination policies. Handle `about:blank`/`blob:` Outlook compose flows carefully; do not globally allow every URL.
 
 ## Wayland
