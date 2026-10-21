@@ -9,13 +9,47 @@ const ROOT = path.join(__dirname, "..");
 const SCRIPT = path.join(ROOT, ".github", "generate-changelog.js");
 
 test("changelog generation accepts existing tags without a shell", () => {
-  const result = spawnSync(
-    process.execPath,
-    [SCRIPT, "v1.3.1", "v1.3.0"],
-    { cwd: ROOT, encoding: "utf8" }
+  const repository = fs.mkdtempSync(
+    path.join(os.tmpdir(), "prospect-changelog-repo-")
   );
-  assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /###/);
+  const runGit = (args) => {
+    const result = spawnSync("git", args, {
+      cwd: repository,
+      encoding: "utf8",
+    });
+    assert.equal(result.status, 0, result.stderr);
+  };
+
+  try {
+    runGit(["init", "--quiet"]);
+    runGit(["config", "user.name", "Prospect Test"]);
+    runGit(["config", "user.email", "prospect-test@example.invalid"]);
+    runGit([
+      "remote",
+      "add",
+      "origin",
+      "https://github.com/example/prospect-mail.git",
+    ]);
+
+    fs.writeFileSync(path.join(repository, "fixture.txt"), "one\n");
+    runGit(["add", "fixture.txt"]);
+    runGit(["commit", "--quiet", "-m", "feat: initial fixture"]);
+    runGit(["tag", "v1.0.0"]);
+
+    fs.appendFileSync(path.join(repository, "fixture.txt"), "two\n");
+    runGit(["commit", "--quiet", "-am", "fix: update fixture"]);
+    runGit(["tag", "v1.0.1"]);
+
+    const result = spawnSync(
+      process.execPath,
+      [SCRIPT, "v1.0.1", "v1.0.0"],
+      { cwd: repository, encoding: "utf8" }
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /### 🐛 Bug Fixes/);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
 });
 
 test("changelog tag input cannot execute shell syntax", () => {
