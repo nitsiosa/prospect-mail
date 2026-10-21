@@ -2,7 +2,7 @@
 
 **Maintained by Cursor. Update after every phase.**
 
-Project state: `LOCAL_CANDIDATE_READY_REMOTE_CI_PENDING`
+Project state: `READY_FOR_HUMAN_TESTING`
 Fork: `https://github.com/nitsiosa/prospect-mail`
 Draft PR: `https://github.com/nitsiosa/prospect-mail/pull/1`
 Branch: `feat/outlook-wayland-ubuntu`
@@ -19,10 +19,10 @@ Environment: `Ubuntu 24.04.5 LTS / GNOME Wayland / x86_64 / Node 24.22.0 / npm 1
 | E. Security hardening | AUTO_PASS (code) | Scoped IPC, guarded navigation/popups, private notification default, redacted logging, production audit clean |
 | F. Debian build and handoff | AUTO_PASS (build) / NEEDS_HUMAN (install) | Debian package built/inspected; install and live checks not run |
 
-Automated tests: `AUTO_PASS — 45/45 Node tests plus source and packaged-archive native-Wayland synthetic smoke, 2026-10-21`
+Automated tests: `AUTO_PASS — 45/45 local Node tests; source and packaged-archive native-Wayland synthetic smoke; remote Test and full cross-platform Build & Release matrix green, 2026-10-21`
 Security review: `AUTO_PASS (source/runtime boundaries) — npm audit --omit=dev: 0 vulnerabilities; full audit: 8 moderate development-only findings in electron-builder's legacy global-agent chain`
 Debian artifact: `dist/prospect-mail_1.3.1_amd64.deb — SHA256 fd0016add314bd5133279a8ca5313011203382d3995a8ee6596e2399bbdd2008`
-Ready for human testing: `YES LOCALLY — remote CI pending; live acceptance is not implied`
+Ready for human testing: `YES — local and remote automated gates green; live acceptance is not implied`
 Live corporate acceptance: `NOT_RUN`
 
 ## NEEDS_HUMAN queue
@@ -31,6 +31,7 @@ Live corporate acceptance: `NOT_RUN`
 - Do not provide credentials, tokens, cookies, tenant IDs or private mailbox/calendar content.
 
 ## Recent activity (prepend entries)
+- [2026-10-21 remote green] Draft PR #1 is mergeable/clean. Both Test checks, Linux x64/arm64, standalone ARM64 Snap, Windows x64/arm64 and macOS x64/arm64 builds pass. There are no review comments, inline comments or reviews.
 - [2026-10-21 remote repair] Remote unit tests and Windows x64/macOS arm64 builds passed. Both actual failures were the same unreleased electron-builder Core24 desktop-mapping bug; other matrix jobs were fail-fast cancellations. Backported merged upstream PR #10176 exactly, added an idempotence/installed-code regression, and verified the generated Snap descriptor locally.
 - [2026-10-21 rebuilt artifact] Rebuilt and re-inspected the Debian candidate after the packaging backport. Final SHA256: `fd0016add314bd5133279a8ca5313011203382d3995a8ee6596e2399bbdd2008`.
 - [2026-10-21 remote CI] With explicit approval, enabled inherited GitHub Actions on the new fork. `Test`, `Build & Release`, and the tag/manual-only release-notes workflow are active; the next docs-only push triggers the applicable test/build workflows.

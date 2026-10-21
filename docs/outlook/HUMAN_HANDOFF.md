@@ -17,7 +17,7 @@ SHA256: `fd0016add314bd5133279a8ca5313011203382d3995a8ee6596e2399bbdd2008`
 - Production dependency audit has 0 vulnerabilities.
 - Debian build, control scripts, desktop entry, Wayland/X11 actions, `mailto:` MIME declaration, AppArmor payload, file permissions and packaged archive allowlist pass.
 - Security review found no unresolved high-risk issue.
-- The remote branch and draft PR exist and are mergeable, but GitHub has not registered the inherited workflows for this new fork. Remote CI remains unverified.
+- Draft PR #1 is mergeable/clean. Both remote Test checks and every Build & Release job pass (Linux x64/arm64, standalone ARM64 Snap, Windows x64/arm64 and macOS x64/arm64); no comments or reviews are unresolved.
 
 ## Not yet verified
 

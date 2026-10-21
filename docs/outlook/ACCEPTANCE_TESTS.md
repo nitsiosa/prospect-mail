@@ -49,6 +49,8 @@ Automated portions pass, but the end-to-end test remains `NOT_RUN` until live va
 
 T02–T05 and T07 are `NOT_RUN` because they require the user's authorised Microsoft 365 session. No test is marked `HUMAN_PASS`.
 
+Remote evidence: draft PR #1 is mergeable/clean; both Test runs and the complete Build & Release matrix pass for Linux x64/arm64, standalone ARM64 Snap, Windows x64/arm64 and macOS x64/arm64. No review or automated-review findings are present.
+
 ## Attack-oriented URL tests (do not require Outlook login)
 - `https://outlook.cloud.microsoft.attacker.invalid/mail`, `https://outlook.cloud.microsoft@evil.invalid`, `https://evil.invalid/?redirect=https://outlook.cloud.microsoft/mail` **are not Microsoft hosts**.
 - `javascript:alert(1)`, `file:///etc/passwd`, `data:text/html,...`, `shell:...` should be blocked by external-link router.
