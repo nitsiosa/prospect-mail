@@ -2,11 +2,11 @@
 
 Date: 2026-10-21
 
-Source commit: `2a239ed5cc1fa9673989e4005aa43c93084b30b8`
+Source commit: `261eca85133e1ee9521dab654ca2a96543fa5e3e`
 
 Artifact: `dist/prospect-mail_1.3.1_amd64.deb`
 
-SHA256: `fd0016add314bd5133279a8ca5313011203382d3995a8ee6596e2399bbdd2008`
+SHA256: `e242ff4797d2516e2d56d3a8027b588ec383ab67e531a035a37da939d15373e7`
 
 ## Result
 
@@ -25,9 +25,11 @@ No unresolved high-risk source or packaged-runtime finding was identified. All p
 - External browser configuration uses `spawn(binary, [validatedUrl], { shell: false })`; ordinary links use `shell.openExternal` only after HTTP(S) validation.
 - Attachment downloads receive a sanitised basename and Electron save-dialog options. The app does not set a silent save path, execute or auto-open downloads.
 - Production logs contain no full URLs, auth query strings, cookie values, subjects, event details, attachment names or profile paths. Calendar notification details are opt-in and off by default.
+- Auth recovery reloads only a hidden window. Network recovery never reloads while focused and permits only one hidden retry until a successful main-frame load, preventing repeated draft disruption.
 - The Linux package advertises `mailto:` capability but contains no code that changes the user's default handler.
 - The packaged app archive contains required runtime files and MIT license, but excludes tests, smoke harnesses, Cursor instructions, scripts and implementation documents.
 - The Core24 Snap desktop fix is an exact, validated backport of merged electron-builder PR #10176. Its postinstall patch is idempotent, checks exact markers and is excluded from the runtime archive.
+- Release workflows use read-only permissions by default, do not persist checkout credentials, and expose GitHub/Snap publish credentials only to tag-only publish/upload steps. Release-note tag input is passed through the environment, verified as an existing tag, and supplied to Git through `execFileSync` arguments rather than a shell.
 
 ## Dependency and package evidence
 

@@ -59,3 +59,8 @@ Rationale: Test-only sandbox bypasses and engineering material must not ship, an
 Date: 2026-10-21
 Decision: Apply an exact, idempotent postinstall backport of electron-builder PR #10176 to the v26 build dependency. Remove the duplicate Core24 `apps.desktop` mapping and use the snap name in generated desktop `Exec` values.
 Rationale: Both remote Linux builds deterministically failed because electron-builder 26.18.0 contains the pre-fix mapping. The fix is already merged upstream but not released on the v26 tag; upgrading all packaging to a v27 alpha has a larger and less controlled blast radius.
+
+## D-014: Draft-safe recovery and release credential scoping
+Date: 2026-10-21
+Decision: Never auto-reload a focused network failure or a visible auth-expired window; allow only one hidden network recovery until a successful load. Keep CI read-only by default, do not persist checkout credentials, scope publish credentials to tag-only steps, and pass verified tag refs to Git without a shell.
+Rationale: A background recovery must not repeatedly disrupt a visible draft. Build-time package scripts do not need release credentials, and workflow-dispatch input must not be shell-interpolated.
