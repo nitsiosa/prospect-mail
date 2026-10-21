@@ -1,6 +1,7 @@
 "use strict";
 
 const { app, BrowserWindow, protocol } = require("electron");
+const path = require("node:path");
 
 const SYNTHETIC_OUTLOOK = `<!doctype html>
 <html>
@@ -41,7 +42,10 @@ app.once("ready", () => {
   );
 });
 
-require("../src/main");
+require(
+  process.env.PROSPECT_MAIL_MAIN ||
+    path.join(__dirname, "..", "src", "main.js")
+);
 
 app
   .whenReady()

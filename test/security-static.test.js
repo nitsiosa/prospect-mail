@@ -24,10 +24,22 @@ test("remote BrowserWindows explicitly enable Electron security boundaries", () 
 });
 
 test("packaged launch never disables the Chromium sandbox", () => {
-  const packageJson = read("package.json");
+  const packageSource = read("package.json");
+  const packageJson = JSON.parse(packageSource);
   const mainSource = read("src/main.js");
-  assert.doesNotMatch(packageJson, /--no-sandbox|ELECTRON_DISABLE_SANDBOX/);
+  assert.doesNotMatch(
+    packageSource,
+    /--no-sandbox|ELECTRON_DISABLE_SANDBOX/
+  );
   assert.doesNotMatch(mainSource, /--no-sandbox|ELECTRON_DISABLE_SANDBOX/);
+  assert.ok(packageJson.build.files.includes("src/**/*"));
+  assert.ok(packageJson.build.files.includes("public/**/*"));
+  assert.equal(
+    packageJson.build.files.some((entry) =>
+      /^(?:test|testing|docs|scripts)(?:\/|$)/.test(entry)
+    ),
+    false
+  );
 });
 
 test("mailto is advertised without silently changing the OS default", () => {
@@ -37,9 +49,15 @@ test("mailto is advertised without silently changing the OS default", () => {
   assert.deepEqual(packageJson.build.linux.mimeTypes, [
     "x-scheme-handler/mailto",
   ]);
+  assert.equal(packageJson.build.linux.category, "Network;Email");
   assert.deepEqual(packageJson.build.linux.executableArgs, [
     "--ozone-platform=wayland",
   ]);
+  assert.equal(packageJson.desktopName, "prospect-mail");
+  assert.equal(
+    packageJson.build.linux.desktop.entry.Actions,
+    "X11;"
+  );
   assert.equal(
     packageJson.build.linux.desktop.desktopActions.X11.Exec,
     "prospect-mail --ozone-platform=x11 %U"

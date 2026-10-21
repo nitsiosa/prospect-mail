@@ -365,6 +365,7 @@ function buildOutlookComposeUrl(fields, mainUrl = DEFAULT_OUTLOOK_URL) {
 
 function classifyUrl(value, { sourceUrl = "" } = {}) {
   const sourceTrusted = isTrustedRendererUrl(sourceUrl);
+  const sourceIsOutlook = isOutlookUrl(sourceUrl);
   const parsed = parseAbsoluteUrl(value);
   if (!parsed) return { action: ROUTE_ACTIONS.BLOCK };
 
@@ -389,7 +390,7 @@ function classifyUrl(value, { sourceUrl = "" } = {}) {
   }
 
   if (parsed.protocol === "mailto:") {
-    const fields = sourceTrusted ? parseMailto(value) : null;
+    const fields = sourceIsOutlook ? parseMailto(value) : null;
     return fields
       ? { action: ROUTE_ACTIONS.MAILTO, fields }
       : { action: ROUTE_ACTIONS.BLOCK };
@@ -398,7 +399,7 @@ function classifyUrl(value, { sourceUrl = "" } = {}) {
   if (parsed.protocol === "msteams:") {
     return {
       action:
-        sourceTrusted && isTeamsProtocolUrl(parsed)
+        sourceIsOutlook && isTeamsProtocolUrl(parsed)
           ? ROUTE_ACTIONS.TEAMS
           : ROUTE_ACTIONS.BLOCK,
       url: parsed.href,
@@ -415,7 +416,7 @@ function classifyUrl(value, { sourceUrl = "" } = {}) {
 
   if (isTeamsHttpsUrl(parsed)) {
     return {
-      action: sourceTrusted ? ROUTE_ACTIONS.TEAMS : ROUTE_ACTIONS.EXTERNAL,
+      action: sourceIsOutlook ? ROUTE_ACTIONS.TEAMS : ROUTE_ACTIONS.EXTERNAL,
       url: parsed.href,
     };
   }

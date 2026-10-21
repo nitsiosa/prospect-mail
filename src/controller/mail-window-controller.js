@@ -11,6 +11,7 @@ const settings = require("../settings");
 const getClientFile = require("./client-injector");
 const path = require("path");
 const { sanitizeDownloadFilename } = require("./download-security");
+const { FederatedAuthPolicy } = require("./federated-auth-policy");
 const {
   buildNotificationContent,
   isTrustedIpcEvent,
@@ -90,6 +91,7 @@ class MailWindowController {
     this.downloadSession = null;
     this.downloadHandler = null;
     this.resumeHandler = null;
+    this.federatedAuthPolicy = new FederatedAuthPolicy();
     this.initialMailtoFields = initialProtocolUrl
       ? parseMailto(initialProtocolUrl)
       : null;
@@ -246,17 +248,19 @@ class MailWindowController {
   }
 
   configureWebContents(contents, { allowIpc }) {
-    this.ownedWebContents.add(contents.id);
+    const contentsId = contents.id;
+    this.ownedWebContents.add(contentsId);
     contents.once("destroyed", () => {
-      this.ownedWebContents.delete(contents.id);
+      this.ownedWebContents.delete(contentsId);
+      this.federatedAuthPolicy.clear(contentsId);
     });
 
     contents.on("will-attach-webview", (event) => event.preventDefault());
     contents.on("will-navigate", (details) => {
-      this.guardNavigation(details, contents);
+      this.guardNavigation(details, contents, false);
     });
     contents.on("will-redirect", (details) => {
-      this.guardNavigation(details, contents);
+      this.guardNavigation(details, contents, true);
     });
 
     contents.setWindowOpenHandler((details) => {
@@ -285,7 +289,7 @@ class MailWindowController {
     if (allowIpc) this.registerIpcHandlers(contents);
   }
 
-  guardNavigation(details, contents) {
+  guardNavigation(details, contents, isRedirect) {
     if (details.isMainFrame === false) return;
 
     const sourceUrl = details.initiator?.url || contents.getURL();
@@ -293,6 +297,17 @@ class MailWindowController {
     if (
       route.action === ROUTE_ACTIONS.INTERNAL ||
       route.action === ROUTE_ACTIONS.INTERNAL_POPUP
+    ) {
+      return;
+    }
+    if (
+      route.action === ROUTE_ACTIONS.EXTERNAL &&
+      this.federatedAuthPolicy.allows({
+        contentsId: contents.id,
+        sourceUrl,
+        destinationUrl: details.url,
+        isRedirect,
+      })
     ) {
       return;
     }
@@ -473,9 +488,13 @@ class MailWindowController {
     const initialWindow = this.win;
     this.cleanExpiredAuthCookies().finally(() => {
       if (!initialWindow.isDestroyed()) {
-        void initialWindow.loadURL(initialUrl, {
-          userAgent: customUserAgent,
-        });
+        void initialWindow
+          .loadURL(initialUrl, {
+            userAgent: customUserAgent,
+          })
+          .catch((error) =>
+            this.logOperationError("Initial Outlook navigation", error)
+          );
       }
     });
 
@@ -654,6 +673,8 @@ class MailWindowController {
   }
 
   addUnreadNumberObserver() {
+    if (!this.win || this.win.isDestroyed()) return;
+    const contents = this.win.webContents;
     const config = {
       showUnreadNotifications:
         settings.get("showUnreadNotifications") === true,
@@ -666,10 +687,10 @@ class MailWindowController {
     };
     const setConfig = `window.prospectMailConfig = Object.assign(window.prospectMailConfig || {}, ${JSON.stringify(config)});`;
 
-    void this.win.webContents
+    void contents
       .executeJavaScript(setConfig)
       .then(() =>
-        this.win.webContents.executeJavaScript(
+        contents.executeJavaScript(
           getClientFile("unread-number-observer.js")
         )
       )

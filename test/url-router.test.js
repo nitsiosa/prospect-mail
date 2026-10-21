@@ -119,6 +119,12 @@ test("Teams meeting links launch the native protocol only from Outlook", () => {
     ROUTE_ACTIONS.BLOCK
   );
   assert.equal(
+    classifyUrl(protocolMeeting, {
+      sourceUrl: "https://login.microsoftonline.com/common/login",
+    }).action,
+    ROUTE_ACTIONS.BLOCK
+  );
+  assert.equal(
     classifyUrl("msteams://evil.invalid/l/meetup-join/id", {
       sourceUrl: OUTLOOK_SOURCE,
     }).action,
@@ -210,6 +216,12 @@ test("mailto routing requires a trusted source", () => {
   assert.equal(
     classifyUrl("mailto:test@example.com?subject=Hello", {
       sourceUrl: "https://evil.invalid",
+    }).action,
+    ROUTE_ACTIONS.BLOCK
+  );
+  assert.equal(
+    classifyUrl("mailto:test@example.com?subject=Hello", {
+      sourceUrl: "https://login.microsoftonline.com/common/login",
     }).action,
     ROUTE_ACTIONS.BLOCK
   );

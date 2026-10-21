@@ -8,6 +8,7 @@ set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 ELECTRON="$ROOT/node_modules/electron/dist/electron"
 SMOKE_SCRIPT="$ROOT/testing/electron-smoke.js"
+SMOKE_MAIN="${PROSPECT_MAIL_MAIN:-$ROOT/src/main.js}"
 
 command -v dbus-run-session >/dev/null
 command -v gnome-shell >/dev/null
@@ -30,7 +31,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-export ROOT ELECTRON SMOKE_SCRIPT TEMP_ROOT
+export ROOT ELECTRON SMOKE_SCRIPT SMOKE_MAIN TEMP_ROOT
 env -i \
   PATH="$PATH" \
   HOME="$TEMP_ROOT/home" \
@@ -44,6 +45,7 @@ env -i \
   ROOT="$ROOT" \
   ELECTRON="$ELECTRON" \
   SMOKE_SCRIPT="$SMOKE_SCRIPT" \
+  PROSPECT_MAIL_MAIN="$SMOKE_MAIN" \
   TEMP_ROOT="$TEMP_ROOT" \
   dbus-run-session -- bash -euo pipefail -c '
     gnome-shell \

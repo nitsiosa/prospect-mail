@@ -134,6 +134,14 @@ test("parseUnreadTitle is localization independent", () => {
     observer.parseUnreadTitle("Posteingang - 263 Elemente (42 ungelesen)"),
     42
   );
+  assert.strictEqual(
+    observer.parseUnreadTitle("Inbox - 2,000 items (1,234 unread)"),
+    1234
+  );
+  assert.strictEqual(
+    observer.parseUnreadTitle("Posteingang - 2.000 Elemente (1.234 ungelesen)"),
+    1234
+  );
   assert.strictEqual(observer.parseUnreadTitle("Inbox - 0 items"), 0);
   assert.strictEqual(observer.parseUnreadTitle(null), 0);
 });

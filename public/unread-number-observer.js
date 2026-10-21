@@ -10,7 +10,6 @@ const CONFIG = {
 
   // Retry delays
   handlerRetryDelayMs: 5000,         // 5 seconds before retrying failed handlers
-  handlerRetryAgainDelayMs: 10000,   // 10 seconds for subsequent retry attempts
 
   // Session-expiry / sign-in detection (see the detection block below)
   authNeededWindowMs: 20000, // window over which repeated AuthNeeded errors are counted
@@ -23,6 +22,9 @@ let lastUnreadNotificationTime;
 let lastCalendarNotificationTime;
 let lastUnreadCount = 0;           // Track previous unread count
 let lastReminderCount = 0;          // Track previous reminder count
+let handlerRetryTimer;
+let loginCheckStarted = false;
+const activeHandlers = new Set();
 
 // Send only a narrow notification request. The main process validates it and
 // supplies the title/body so web content cannot forge arbitrary notifications.
@@ -128,8 +130,11 @@ const startLoginCheck = () => {
 // Outlook localizes the surrounding text, but the unread count remains the
 // first number in parentheses in the folder title.
 const parseUnreadTitle = (title) => {
-  const match = typeof title === "string" ? title.match(/\((\d+)/) : null;
-  return match ? parseInt(match[1], 10) : 0;
+  const match =
+    typeof title === "string" ? title.match(/\(([\d\s.,]+)/) : null;
+  if (!match) return 0;
+  const digits = match[1].replace(/\D/g, "");
+  return digits ? parseInt(digits, 10) : 0;
 };
 
 const formatReminderDetails = (reminderElements) => {
@@ -358,50 +363,38 @@ const observeUnreadHandlers = {
 const initializeEmailMonitoring = () => {
   // Native Electron notifications don't require permission requests
   // The main process handles notification permissions
+  if (!loginCheckStarted) {
+    startLoginCheck();
+    loginCheckStarted = true;
+  }
 
-  const startedHandlers = [];
+  // Sign-in pages do not contain the Outlook mail/reminder DOM. Avoid an
+  // endless retry loop while the user completes interactive authentication.
+  if (isOnLoginPage()) return;
+
   const failedHandlers = [];
 
   for (const interfaceType in observeUnreadHandlers) {
+    if (activeHandlers.has(interfaceType)) continue;
     const handler = observeUnreadHandlers[interfaceType];
     const started = handler();
 
     if (started) {
       console.log(`Successfully connected to ${interfaceType} interface`);
-      startedHandlers.push(interfaceType);
+      activeHandlers.add(interfaceType);
     } else {
       console.log(`Failed to connect to ${interfaceType} interface`);
       failedHandlers.push(interfaceType);
     }
   }
 
-  // Retry failed handlers after a delay
   if (failedHandlers.length > 0) {
-    console.log(`Retrying failed handlers in ${CONFIG.handlerRetryDelayMs / 1000} seconds: ${failedHandlers.join(', ')}`);
-    setTimeout(() => {
-      failedHandlers.forEach(interfaceType => {
-        const handler = observeUnreadHandlers[interfaceType];
-        const started = handler();
-        if (started) {
-          console.log(`Successfully connected to ${interfaceType} interface on retry`);
-        } else {
-          console.log(`${interfaceType} interface still not ready, will retry again`);
-          // Keep retrying
-          setTimeout(() => handler(), CONFIG.handlerRetryAgainDelayMs);
-        }
-      });
-    }, CONFIG.handlerRetryDelayMs);
+    if (handlerRetryTimer) clearTimeout(handlerRetryTimer);
+    handlerRetryTimer = setTimeout(
+      initializeEmailMonitoring,
+      CONFIG.handlerRetryDelayMs
+    );
   }
-
-  // If no handlers started at all, retry everything
-  if (startedHandlers.length === 0) {
-    console.log(`No interfaces ready yet, retrying all in ${CONFIG.handlerRetryDelayMs / 1000} seconds...`);
-    setTimeout(initializeEmailMonitoring, CONFIG.handlerRetryDelayMs);
-  }
-
-  // Start watching for a session-expiry / sign-in-required state, independent
-  // of the handler retries above, so a tray/minimized user gets notified.
-  startLoginCheck();
 };
 
 const debounce = (() => {
