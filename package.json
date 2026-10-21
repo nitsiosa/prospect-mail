@@ -66,7 +66,7 @@
     "dist:windows:x64": "electron-builder --win --x64",
     "dist:windows:arm64": "electron-builder --win --arm64",
     "release": "electron-builder",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "node scripts/apply-electron-builder-snap-fix.js && electron-builder install-app-deps"
   },
   "dependencies": {
     "electron-store": "^8.2.0"
