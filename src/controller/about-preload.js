@@ -5,8 +5,8 @@ const { contextBridge, ipcRenderer } = require("electron");
  * Exposes safe APIs to the renderer process
  */
 contextBridge.exposeInMainWorld("electronAPI", {
-  openExternal: (url) => {
-    ipcRenderer.send("open-external-url", url);
+  openExternal: (target) => {
+    ipcRenderer.send("open-about-link", target);
   },
   closeWindow: () => {
     ipcRenderer.send("close-about-window");

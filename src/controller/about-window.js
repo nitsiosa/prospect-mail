@@ -1,7 +1,12 @@
-const { BrowserWindow, app, shell, ipcMain } = require("electron");
+const { BrowserWindow, app, shell } = require("electron");
 const path = require("path");
 
 let aboutWindow = null;
+const ABOUT_LINKS = Object.freeze({
+  github: "https://github.com/julian-alarcon/prospect-mail",
+  donate: "https://github.com/sponsors/julian-alarcon",
+  issues: "https://github.com/julian-alarcon/prospect-mail/issues",
+});
 
 /**
  * Opens the About window
@@ -15,8 +20,6 @@ function openAboutWindow() {
   }
 
   const version = app.getVersion();
-  const githubUrl = "https://github.com/julian-alarcon/prospect-mail";
-  const donateUrl = "https://github.com/sponsors/julian-alarcon";
 
   aboutWindow = new BrowserWindow({
     width: 450,
@@ -33,36 +36,47 @@ function openAboutWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      webviewTag: false,
       preload: path.join(__dirname, "about-preload.js"),
     },
   });
 
-  // Build URL with query parameters for version and links
+  // Build URL with the display-only version. External destinations are fixed
+  // in the main process and selected by an enum, never supplied by HTML.
   const htmlPath = path.join(__dirname, "../about.html");
-  const params = new URLSearchParams({
-    version: version,
-    github: githubUrl,
-    donate: donateUrl,
-  });
+  const params = new URLSearchParams({ version });
 
   aboutWindow.loadFile(htmlPath, {
     search: params.toString(),
   });
 
-  // Handle IPC messages for opening external links
-  ipcMain.on("open-external-url", (_event, url) => {
-    shell.openExternal(url);
+  const contents = aboutWindow.webContents;
+  contents.ipc.on("open-about-link", (event, target, ...extra) => {
+    if (
+      extra.length > 0 ||
+      event.senderFrame !== contents.mainFrame ||
+      typeof target !== "string" ||
+      !Object.hasOwn(ABOUT_LINKS, target)
+    ) {
+      return;
+    }
+    void shell.openExternal(ABOUT_LINKS[target]).catch(() => {
+      console.warn("[About] Could not open the selected external link");
+    });
   });
 
-  ipcMain.on("close-about-window", () => {
+  contents.ipc.on("close-about-window", (event, ...args) => {
+    if (args.length > 0 || event.senderFrame !== contents.mainFrame) return;
     if (aboutWindow && !aboutWindow.isDestroyed()) {
       aboutWindow.close();
     }
   });
 
   // Open external links in default browser
-  aboutWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+  aboutWindow.webContents.setWindowOpenHandler(() => {
     return { action: "deny" };
   });
 

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src file: data:; script-src 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; script-src 'self';">
     <title>About Prospect Mail</title>
     <style>
         * {
@@ -149,53 +149,6 @@
         <a href="#" class="report-link" id="report-link">Report an issue</a>
     </div>
 
-    <script>
-        // Version and links are passed via URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const version = urlParams.get('version');
-        const githubUrl = urlParams.get('github');
-        const donateUrl = urlParams.get('donate');
-        const issuesUrl = `${githubUrl}/issues`;
-
-        // Set version
-        document.getElementById('version').textContent = `Version ${version}`;
-
-        // Get link elements
-        const githubLink = document.getElementById('github-link');
-        const donateLink = document.getElementById('donate-link');
-        const reportLink = document.getElementById('report-link');
-        const closeBtn = document.getElementById('close-btn');
-
-        // Close button handler
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                if (window.electronAPI && window.electronAPI.closeWindow) {
-                    window.electronAPI.closeWindow();
-                }
-            });
-        }
-
-        // Add click handlers
-        githubLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (window.electronAPI && window.electronAPI.openExternal) {
-                window.electronAPI.openExternal(githubUrl);
-            }
-        });
-
-        donateLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (window.electronAPI && window.electronAPI.openExternal) {
-                window.electronAPI.openExternal(donateUrl);
-            }
-        });
-
-        reportLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (window.electronAPI && window.electronAPI.openExternal) {
-                window.electronAPI.openExternal(issuesUrl);
-            }
-        });
-    </script>
+    <script src="./about.js"></script>
 </body>
 </html>

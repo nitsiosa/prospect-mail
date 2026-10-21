@@ -67,6 +67,9 @@ For other distributions please follow your specific steps.
 flag `prospect-mail --minimized`
 - Dock tray support
 - System notification
+- Privacy-first calendar notifications (details are opt-in)
+- Safe `mailto:` compose and Teams meeting-link handoff
+- Native Wayland launcher with an explicit X11 fallback
 - Connect to standard or custom Outlook URL
 - Spellcheck using native Outlook MS Editor
 - Visualize files (pdf) in emails
@@ -85,31 +88,12 @@ need to click in "Reload settings" to apply changes.
 ```json
 {
   "urlMainWindow": "https://outlook.cloud.microsoft/mail",
-  "urlsInternal": [
-    "outlook.cloud.microsoft/mail/deeplink",
-    "outlook.cloud.microsoft/calendar/deeplink",
-    "outlook.live.com/mail/deeplink",
-    "outlook.office365.com/mail/deeplink",
-    "outlook.office.com/mail/deeplink",
-    "outlook.office.com/calendar/deeplink",
-    "to-do.office.com/tasks"
-  ],
-  "urlsExternal": [
-    "outlook.cloud.microsoft",
-    "outlook.live.com",
-    "outlook.office365.com",
-    "outlook.office.com"
-  ],
-  "safelinksUrls": [
-    "outlook.cloud.microsoft/mail/safelink.html",
-    "outlook.office.com/mail/safelink.html",
-    "safelinks.protection.outlook.com"
-  ],
   "showWindowFrame": true,
   "hideOnClose": true,
   "hideOnMinimize": false,
   "startupWindowState": "normal",
   "showUnreadNotifications": true,
+  "showNotificationContent": false,
   "unreadNotificationSource": "inbox",
   "customBrowserPath": "microsoft-edge"
 }
@@ -119,15 +103,13 @@ need to click in "Reload settings" to apply changes.
 
 | Setting             | Description                                                                                  | Default                           |
 | ------------------- | -------------------------------------------------------------------------------------------- | --------------------------------- |
-| `urlMainWindow`     | Main Outlook service URL to load                                                             | `https://outlook.cloud.microsoft/mail` |
-| `urlsInternal`      | Array of URL patterns for deeplinks that open in new app windows                             | See example above                 |
-| `urlsExternal`      | Array of URL patterns for Outlook/Microsoft 365 services that open in the main window       | See example above                 |
-| `safelinksUrls`     | Array of URL patterns for Microsoft Safe Links that open in external browser                 | See example above                 |
+| `urlMainWindow`     | Supported HTTPS Outlook service URL to load; the host must be a known Microsoft Outlook host | `https://outlook.cloud.microsoft/mail` |
 | `showWindowFrame`   | Show/hide window frame and title bar                                                         | `true`                            |
 | `hideOnClose`       | Minimize to tray instead of quitting when closing window                                     | `true`                            |
 | `hideOnMinimize`    | Hide to tray when minimizing (off by default: minimize stays in the taskbar; restore via tray → Show if enabled) | `false`     |
 | `startupWindowState`| Window state on startup: `"normal"`, `"minimized"`, or `"maximized"` (also available via tray menu; `--minimized` flag forces minimized) | `"normal"`     |
 | `showUnreadNotifications` | Show the "new messages" desktop notification (calendar reminders are unaffected; also available via tray menu) | `true`                  |
+| `showNotificationContent` | Include calendar subject/time/location in desktop notification bodies; off by default for lock-screen privacy | `false` |
 | `unreadNotificationSource` | Which folders drive the unread badge and new-mail notifications: `"inbox"` (Inbox only) or `"favorites"` (sum of unread across your Outlook Favorites) | `"inbox"`     |
 | `customBrowserPath` | Custom browser for external links. Use command name (e.g., `"firefox"`) or full path        | System default                    |
 
@@ -143,6 +125,11 @@ need to click in "Reload settings" to apply changes.
 > still work. Existing installs keep their saved `urlMainWindow`; use "Restore
 > Default Settings" in the tray menu to adopt the new default.
 
+> [!NOTE]
+> Older `urlsInternal`, `urlsExternal`, and `safelinksUrls` settings are ignored.
+> Routing now uses parsed URLs and a fixed Microsoft host/scheme allowlist so a
+> configuration typo cannot make an unrelated site a privileged app page.
+
 ### Example Configuration for Personal Outlook
 
 This configuration will let you use Prospect with personal Outlook.com account:
@@ -153,9 +140,7 @@ This configuration will let you use Prospect with personal Outlook.com account:
 
 ```json
 {
-  "urlMainWindow": "https://login.live.com/login.srf",
-  "urlsInternal": ["outlook.com", "live.com"],
-  "urlsExternal": ["outlook.com", "live.com"]
+  "urlMainWindow": "https://outlook.live.com/mail/"
 }
 ```
 

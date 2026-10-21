@@ -1,6 +1,9 @@
 const { app } = require("electron");
 const path = require("path");
 const MailWindowController = require("./controller/mail-window-controller");
+const {
+  extractMailtoArgument,
+} = require("./controller/protocol-command");
 const TrayController = require("./controller/tray-controller");
 
 // Set the app name to use kebab-case for config directory (avoids spaces in path)
@@ -35,6 +38,7 @@ class ProspectMail {
   constructor() {
     this.mailController = null;
     this.trayController = null;
+    this.pendingProtocolUrl = extractMailtoArgument(process.argv);
   }
 
   // init method, the entry point of the app
@@ -43,8 +47,24 @@ class ProspectMail {
     if (!lock) {
       app.quit();
     } else {
-      app.on("second-instance", (event, commandLine, workingDirectory) => {
-        if (this.mailController) this.mailController.show();
+      app.on("second-instance", (_event, commandLine) => {
+        const protocolUrl = extractMailtoArgument(commandLine);
+        if (protocolUrl && this.mailController) {
+          this.mailController.handleProtocolUrl(protocolUrl);
+        } else if (this.mailController) {
+          this.mailController.show();
+        }
+      });
+
+      app.on("open-url", (event, url) => {
+        event.preventDefault();
+        const protocolUrl = extractMailtoArgument([url]);
+        if (!protocolUrl) return;
+        if (this.mailController) {
+          this.mailController.handleProtocolUrl(protocolUrl);
+        } else {
+          this.pendingProtocolUrl = protocolUrl;
+        }
       });
 
       this.initApp();
@@ -70,7 +90,10 @@ class ProspectMail {
   }
 
   createControllers() {
-    this.mailController = new MailWindowController();
+    this.mailController = new MailWindowController({
+      initialProtocolUrl: this.pendingProtocolUrl,
+    });
+    this.pendingProtocolUrl = null;
     this.trayController = new TrayController(this.mailController);
   }
 }

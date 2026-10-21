@@ -24,15 +24,10 @@ let lastCalendarNotificationTime;
 let lastUnreadCount = 0;           // Track previous unread count
 let lastReminderCount = 0;          // Track previous reminder count
 
-// Helper to create and show notifications using native Electron notifications
-const showNotification = (title, body) => {
-  console.log('showNotification called:', { title, body });
-  console.log('Creating native Electron notification...');
-
-  // Use native Electron notification via IPC
-  // Icon is handled by main process using file path
-  window.electronAPI.showNotification(title, body);
-  console.log('Native notification request sent to main process');
+// Send only a narrow notification request. The main process validates it and
+// supplies the title/body so web content cannot forge arbitrary notifications.
+const showNotification = (request) => {
+  window.electronAPI.showNotification(request);
 };
 
 // ── Session-expiry / sign-in detection ─────────────────────────────────────
@@ -55,8 +50,26 @@ const LOGIN_URL_PATTERNS = [
   'login.microsoft.com',
 ];
 
-const isOnLoginPageUrl = (href) =>
-  !!href && LOGIN_URL_PATTERNS.some((p) => href.includes(p));
+const isOnLoginPageUrl = (href) => {
+  if (typeof href !== "string" || !href) return false;
+  try {
+    const url = new URL(href);
+    if (
+      url.protocol !== "https:" ||
+      url.username ||
+      url.password ||
+      (url.port && url.port !== "443")
+    ) {
+      return false;
+    }
+    const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+    return LOGIN_URL_PATTERNS.some(
+      (host) => hostname === host || hostname.endsWith(`.${host}`)
+    );
+  } catch {
+    return false;
+  }
+};
 
 const isOnLoginPage = () => {
   try {
@@ -80,7 +93,6 @@ const isAuthNeededRejection = (reason) => /\bAuthNeeded\b/.test(rejectionMessage
 const reportLoginRequired = (reason) => {
   if (loginRequiredReported) return;
   loginRequiredReported = true;
-  console.log('Login required detected, reporting to main process', { reason });
   window.electronAPI.reportLoginRequired(reason);
 };
 
@@ -113,6 +125,32 @@ const startLoginCheck = () => {
   }
 };
 
+// Outlook localizes the surrounding text, but the unread count remains the
+// first number in parentheses in the folder title.
+const parseUnreadTitle = (title) => {
+  const match = typeof title === "string" ? title.match(/\((\d+)/) : null;
+  return match ? parseInt(match[1], 10) : 0;
+};
+
+const formatReminderDetails = (reminderElements) => {
+  const details = [];
+  for (const reminder of reminderElements) {
+    const subject = reminder.getAttribute("subject") || "Reminder";
+    const timeDisplay =
+      reminder.getAttribute("starttimedisplaystring") || "";
+    const timeUntil =
+      reminder.getAttribute("timeuntildisplaystring") || "";
+    const location = reminder.getAttribute("location") || "";
+
+    let line = subject;
+    if (timeDisplay) line += ` at ${timeDisplay}`;
+    if (timeUntil) line += ` (${timeUntil})`;
+    if (location) line += ` - ${location}`;
+    details.push(line);
+  }
+  return details.join("\n").slice(0, 1000);
+};
+
 const observeUnreadHandlers = {
   outlookWebAppUnread: () => {
     // Find inbox element by semantic attribute (more stable than CSS classes)
@@ -122,18 +160,6 @@ const observeUnreadHandlers = {
       console.log(`No inbox element found for unread monitoring`);
       return false;
     }
-
-    // Parse the unread count from a folder's title tooltip. Outlook localizes
-    // the word ("unread"/"ungelesen"/"non lus"/...), but the count is always the
-    // first number inside the parentheses, so match the digits after the opening
-    // paren instead of the English word:
-    //   "Inbox - 263 items (217 unread)" / "Posteingang - 263 Elemente (217 ungelesen)"
-    // A folder with no unread messages omits the parenthetical (e.g.
-    // "Action - 0 items"), so no match correctly yields 0.
-    const parseUnread = (title) => {
-      const match = title?.match(/\((\d+)/);
-      return match ? parseInt(match[1], 10) : 0;
-    };
 
     // Resolve how many unread messages to report, per the user's setting:
     //   "inbox"     — the Inbox folder only (default, original behaviour)
@@ -153,12 +179,12 @@ const observeUnreadHandlers = {
         );
         let total = 0;
         favorites.forEach((el) => {
-          total += parseUnread(el.getAttribute("title"));
+          total += parseUnreadTitle(el.getAttribute("title"));
         });
         return total;
       }
 
-      return parseUnread(inboxElement.getAttribute("title"));
+      return parseUnreadTitle(inboxElement.getAttribute("title"));
     };
 
     const checkUnread = (checkOnlyZeroUnread) => {
@@ -200,10 +226,7 @@ const observeUnreadHandlers = {
             if (window.prospectMailConfig && window.prospectMailConfig.showUnreadNotifications === false) {
               console.log('Unread notification suppressed by user setting (showUnreadNotifications=false)');
             } else {
-              showNotification(
-                "Prospect Mail: New Messages",
-                `There are ${unread} unread messages.`
-              );
+              showNotification({ kind: "mail", count: unread });
               lastUnreadNotificationTime = now;
             }
           } else {
@@ -250,8 +273,9 @@ const observeUnreadHandlers = {
       checkUnread(false);
     }, CONFIG.unreadCheckIntervalMs);
 
-    // Initial check
-    checkUnread();
+    // Establish the baseline without notifying about messages that predate app
+    // startup. Only later increases represent newly arrived mail.
+    checkUnread(true);
 
     return true;
   },
@@ -279,8 +303,6 @@ const observeUnreadHandlers = {
       const reminderCount = reminderElements.length;
 
       console.log(`Found ${reminderCount} calendar reminder(s)`);
-      window.electronAPI.sendNotification(reminderCount > 0);
-
       // Only show notification if reminder count increased
       if (reminderCount > lastReminderCount && !suppressNotification) {
         // Anti-spam: only show notification if enough time has passed
@@ -297,26 +319,16 @@ const observeUnreadHandlers = {
         });
 
         if (!lastCalendarNotificationTime || timeSinceLastNotification > CONFIG.calendarReminderThrottleMs) {
-          const reminderDetails = [];
-          reminderElements.forEach((reminder) => {
-            const subject = reminder.getAttribute('subject') || 'Reminder';
-            const timeDisplay = reminder.getAttribute('starttimedisplaystring') || '';
-            const timeUntil = reminder.getAttribute('timeuntildisplaystring') || '';
-            const location = reminder.getAttribute('location') || '';
-
-            let details = subject;
-            if (timeDisplay) details += ` at ${timeDisplay}`;
-            if (timeUntil) details += ` (${timeUntil})`;
-            if (location) details += ` - ${location}`;
-
-            reminderDetails.push(details);
+          const showDetails =
+            window.prospectMailConfig &&
+            window.prospectMailConfig.showNotificationContent === true;
+          showNotification({
+            kind: "calendar",
+            count: reminderCount,
+            details: showDetails
+              ? formatReminderDetails(reminderElements)
+              : "",
           });
-
-          console.log('Showing calendar notification:', reminderDetails);
-          showNotification(
-            `Prospect Mail: ${reminderCount} Calendar Reminder${reminderCount > 1 ? 's' : ''}`,
-            reminderDetails.join('\n')
-          );
           lastCalendarNotificationTime = now;
         } else {
           console.log(`Calendar notification suppressed by anti-spam (need to wait ${CONFIG.calendarReminderThrottleMs}ms)`);
@@ -415,6 +427,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     isOnLoginPage,
     rejectionMessage,
     isAuthNeededRejection,
+    formatReminderDetails,
+    parseUnreadTitle,
     recordAuthNeeded,
     reportLoginRequired,
     startLoginCheck,

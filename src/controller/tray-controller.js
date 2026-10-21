@@ -4,7 +4,6 @@ const {
   Tray,
   nativeImage,
   Menu,
-  ipcMain,
   shell,
 } = require("electron");
 const settings = require("../settings");
@@ -28,18 +27,20 @@ class TrayController {
     this.tray = new Tray(this.createTrayIcon(""));
     this.buildContextMenu();
     this.lastUnread = "";
-
+    this.mailController.setUnreadHandler((value) =>
+      this.updateUnread(value)
+    );
     this.tray.on("click", () => this.fireClickEvent());
+  }
 
-    ipcMain.on("updateUnread", (_event, value) => {
-      // Skip redundant setImage calls: each one makes Chromium write a new temp
-      // icon dir and emit NewIcon, which on Wayland/appindicator races the SNI
-      // host and blanks the tray icon. Only redraw when the state changed.
-      const isUnread = Boolean(value);
-      if (isUnread === Boolean(this.lastUnread)) return;
-      this.lastUnread = value;
-      this.tray.setImage(this.createTrayIcon(value));
-    });
+  updateUnread(value) {
+    // Skip redundant setImage calls: each one makes Chromium write a new temp
+    // icon dir and emit NewIcon, which on Wayland/appindicator races the SNI
+    // host and blanks the tray icon. Only redraw when the state changed.
+    const isUnread = Boolean(value);
+    if (isUnread === Boolean(this.lastUnread)) return;
+    this.lastUnread = value;
+    this.tray.setImage(this.createTrayIcon(value));
   }
 
   buildContextMenu() {
@@ -99,6 +100,12 @@ class TrayController {
             checked: settings.get("showUnreadNotifications"),
             click: () => this.toggleUnreadNotifications(),
           },
+          {
+            label: "Show Notification Details",
+            type: "checkbox",
+            checked: settings.get("showNotificationContent") === true,
+            click: () => this.toggleNotificationContent(),
+          },
           { type: "separator" },
           {
             label: "Show Settings File",
@@ -156,12 +163,7 @@ class TrayController {
   }
 
   forceShow() {
-    if (!this.mailController.win) return;
-
-    if (!this.mailController.win.isVisible()) {
-      this.mailController.toggleWindow();
-    }
-    this.mailController.win.show();
+    this.mailController.show();
   }
 
   reloadWindow() {
@@ -196,6 +198,12 @@ class TrayController {
     settings.set("showUnreadNotifications", !orivalue);
     this.buildContextMenu(); // Rebuild menu to reflect new checkbox state
     // Reload the window so the observer picks up the new setting
+    this.mailController.reloadWindow();
+  }
+  toggleNotificationContent() {
+    const originalValue = settings.get("showNotificationContent") === true;
+    settings.set("showNotificationContent", !originalValue);
+    this.buildContextMenu();
     this.mailController.reloadWindow();
   }
 
@@ -251,7 +259,6 @@ class TrayController {
     if (response !== 1) return;
 
     const userDataPath = app.getPath("userData");
-    console.log(`Deleting user data at: ${userDataPath}`);
 
     try {
       await fs.promises.rm(userDataPath, { recursive: true, force: true });

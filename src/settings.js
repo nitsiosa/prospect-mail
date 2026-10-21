@@ -12,26 +12,6 @@ const settings = new Store({
     // now the principal URL. The legacy office.com / office365.com / live.com
     // hosts remain valid endpoints and are kept for compatibility.
     urlMainWindow: "https://outlook.cloud.microsoft/mail",
-    urlsInternal: [
-      "outlook.cloud.microsoft/mail/deeplink",
-      "outlook.cloud.microsoft/calendar/deeplink",
-      "outlook.live.com/mail/deeplink",
-      "outlook.office365.com/mail/deeplink",
-      "outlook.office.com/mail/deeplink",
-      "outlook.office.com/calendar/deeplink",
-      "to-do.office.com/tasks",
-    ],
-    urlsExternal: [
-      "outlook.cloud.microsoft",
-      "outlook.live.com",
-      "outlook.office365.com",
-      "outlook.office.com",
-    ],
-    safelinksUrls: [
-      "outlook.cloud.microsoft/mail/safelink.html",
-      "outlook.office.com/mail/safelink.html",
-      "safelinks.protection.outlook.com",
-    ],
     showWindowFrame: true,
     hideOnClose: true,
     // Default off so minimize behaves like a standard window (stays in the
@@ -42,6 +22,9 @@ const settings = new Store({
     startupWindowState: "normal",
     // Positive phrasing: true = show desktop notifications for new mail.
     showUnreadNotifications: true,
+    // Keep notification bodies private by default. Users can opt in to showing
+    // calendar subject/time/location details on the desktop lock screen.
+    showNotificationContent: false,
     // Which folders drive the unread badge and new-mail notifications:
     //   "inbox"     — the Inbox folder only (default, original behaviour)
     //   "favorites" — sum of unread across the Outlook Favorites folders

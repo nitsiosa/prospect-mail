@@ -86,12 +86,27 @@
       "category": "Email;Network;Office",
       "packageCategory": "net",
       "executableName": "prospect-mail",
+      "syncDesktopName": true,
+      "mimeTypes": [
+        "x-scheme-handler/mailto"
+      ],
+      "executableArgs": [
+        "--ozone-platform=wayland"
+      ],
       "synopsis": "Prospect Mail, unofficial desktop mail client for Microsoft Outlook",
       "desktop": {
         "entry": {
           "Name": "Prospect Mail",
           "Comment": "Unofficial desktop mail client for Microsoft Outlook",
-          "StartupWMClass": "prospect-mail"
+          "StartupWMClass": "prospect-mail",
+          "StartupNotify": "true",
+          "X-GNOME-UsesNotifications": "true"
+        },
+        "desktopActions": {
+          "X11": {
+            "Name": "Launch using X11",
+            "Exec": "prospect-mail --ozone-platform=x11 %U"
+          }
         }
       },
       "target": [

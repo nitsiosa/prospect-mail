@@ -1,13 +1,43 @@
-const { app, BrowserWindow, shell, ipcMain, Menu } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  Menu,
+  Notification,
+  powerMonitor,
+  shell,
+} = require("electron");
 const { spawn } = require("child_process");
 const settings = require("../settings");
 const getClientFile = require("./client-injector");
 const path = require("path");
+const { sanitizeDownloadFilename } = require("./download-security");
+const {
+  buildNotificationContent,
+  isTrustedIpcEvent,
+  validateLoginReason,
+  validateNotificationRequest,
+  validateUnreadCount,
+} = require("./ipc-validation");
+const {
+  decideAuthRecovery,
+  shouldReloadForNetworkFailure,
+} = require("./recovery-policy");
+const {
+  DEFAULT_OUTLOOK_URL,
+  ROUTE_ACTIONS,
+  buildOutlookComposeUrl,
+  classifyUrl,
+  isAuthenticationUrl,
+  isOutlookUrl,
+  isTeamsProtocolUrl,
+  normalizeExternalHttpUrl,
+  normalizeOutlookMainUrl,
+  parseMailto,
+  teamsHttpsFallback,
+  toTeamsProtocolUrl,
+} = require("./url-router");
+const { chooseShowAction } = require("./window-state");
 
-let mainMailServiceUrl;
-let deeplinkUrls;
-let safelinksUrls;
-let mailServicesUrls;
 let showWindowFrame;
 
 // Microsoft auth domains whose cookies are checked/cleaned for session recovery
@@ -40,112 +70,323 @@ const AUTH_COOKIE_NAMES = new Set([
   "rtFa",
 ]);
 
-// Network-recovery state. Lives in the main process so it survives renderer
-// reloads. A dropped connection surfaces as a main-frame `did-fail-load`; we
-// reload once, debounced, so a burst of failures triggers a single reload.
-let lastNetworkReloadAt = 0;
-const NETWORK_RELOAD_MIN_INTERVAL_MS = 5 * 1000;
-// Chromium net error codes worth reloading for (transient connectivity). We
-// deliberately exclude ERR_ABORTED (-3, normal SPA navigation) and cert/HTTP
-// errors, which a reload won't fix.
-const RECOVERABLE_NET_ERRORS = new Set([
-  -2,   // ERR_FAILED
-  -21,  // ERR_NETWORK_CHANGED
-  -100, // ERR_CONNECTION_CLOSED
-  -101, // ERR_CONNECTION_RESET
-  -102, // ERR_CONNECTION_REFUSED
-  -104, // ERR_CONNECTION_FAILED
-  -105, // ERR_NAME_NOT_RESOLVED
-  -106, // ERR_INTERNET_DISCONNECTED
-  -109, // ERR_ADDRESS_UNREACHABLE
-  -118, // ERR_CONNECTION_TIMED_OUT
-  -130, // ERR_PROXY_CONNECTION_FAILED
-  -137, // ERR_NAME_RESOLUTION_FAILED
-]);
-
-// Session-recovery state. A transient expired-session banner (OWA rejects data
-// calls with AuthNeeded) usually clears on a fresh load, because OWA re-runs
-// silent SSO. We try that ONCE per cooldown and only while the user isn't
-// actively in the window; if the banner returns within the cooldown, the
-// session is really gone, so we notify instead of looping. Lives in the main
-// process so it survives the reload.
-let lastAuthRecoveryReloadAt = 0;
-const AUTH_RECOVERY_COOLDOWN_MS = 3 * 60 * 1000; // 3 minutes
-
 //Setted by cmdLine to initial minimization
 const initialMinimization = {
   domReady: false,
 };
 
 class MailWindowController {
-  constructor() {
-    this.init();
+  constructor({ initialProtocolUrl = null } = {}) {
     // Check both command-line flag and settings for initial minimization
-    const hasMinimizedFlag = global.cmdLine.indexOf("--minimized") !== -1;
+    const commandLine = Array.isArray(global.cmdLine) ? global.cmdLine : [];
+    const hasMinimizedFlag = commandLine.includes("--minimized");
     const startMinimizedSetting = settings.get("startupWindowState") === "minimized";
     initialMinimization.domReady = hasMinimizedFlag || startMinimizedSetting;
+
+    this.lastNetworkReloadAt = 0;
+    this.lastAuthRecoveryReloadAt = 0;
+    this.onUnreadChanged = null;
+    this.ownedWebContents = new Set();
+    this.downloadSession = null;
+    this.downloadHandler = null;
+    this.resumeHandler = null;
+    this.initialMailtoFields = initialProtocolUrl
+      ? parseMailto(initialProtocolUrl)
+      : null;
+    this.init();
   }
+
   reloadSettings() {
-    // Get configurations.
-    showWindowFrame = settings.get("showWindowFrame");
+    showWindowFrame = settings.get("showWindowFrame") === true;
 
-    mainMailServiceUrl = settings.get("urlMainWindow");
-    deeplinkUrls = settings.get("urlsInternal");
-    mailServicesUrls = settings.get("urlsExternal");
-    safelinksUrls = settings.get("safelinksUrls");
-
-    console.log("Loaded settings", {
-      mainMailServiceUrl: mainMailServiceUrl,
-      deeplinkUrls: deeplinkUrls,
-      mailServicesUrls: mailServicesUrls,
-      safelinksUrls: safelinksUrls,
-    });
-
-    // Compile RegExp patterns once for performance and security
-    // Escape special regex characters to prevent ReDoS attacks
-    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    this.safelinksPattern = new RegExp(safelinksUrls.map(escapeRegex).join("|"));
-    this.deeplinkPattern = new RegExp(deeplinkUrls.map(escapeRegex).join("|"));
-    this.mailServicesPattern = new RegExp(mailServicesUrls.map(escapeRegex).join("|"));
+    const configuredMainUrl = settings.get("urlMainWindow");
+    this.mainMailServiceUrl =
+      normalizeOutlookMainUrl(configuredMainUrl) || DEFAULT_OUTLOOK_URL;
+    if (this.mainMailServiceUrl !== configuredMainUrl) {
+      console.warn(
+        "[Settings] Ignoring an invalid or untrusted Outlook main URL"
+      );
+    }
   }
 
   openExternalLink(url) {
-    // Validate URL protocol for security
-    try {
-      const parsed = new URL(url);
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
-        console.warn('Blocked non-HTTP(S) URL:', url);
-        return;
+    const safeUrl = normalizeExternalHttpUrl(url);
+    if (!safeUrl) return false;
+
+    const customBrowserPath = settings.get("customBrowserPath");
+    const useCustomBrowser =
+      typeof customBrowserPath === "string" &&
+      customBrowserPath.length > 0 &&
+      customBrowserPath.length <= 4096 &&
+      !customBrowserPath.includes("\u0000");
+
+    if (useCustomBrowser) {
+      try {
+        const child = spawn(customBrowserPath, [safeUrl], {
+          detached: true,
+          stdio: "ignore",
+          shell: false,
+        });
+        child.unref();
+        child.once("error", (error) => {
+          this.logOperationError("Custom browser launch", error);
+          this.openSystemExternal(safeUrl);
+        });
+      } catch (error) {
+        this.logOperationError("Custom browser launch", error);
+        this.openSystemExternal(safeUrl);
       }
-    } catch (err) {
-      console.error('Invalid URL:', url, err);
+    } else {
+      this.openSystemExternal(safeUrl);
+    }
+    return true;
+  }
+
+  openSystemExternal(url) {
+    void shell.openExternal(url).catch((error) => {
+      this.logOperationError("External browser launch", error);
+    });
+  }
+
+  async openTeamsLink(url) {
+    const nativeUrl = isTeamsProtocolUrl(url)
+      ? url
+      : toTeamsProtocolUrl(url);
+    const fallbackUrl = teamsHttpsFallback(url);
+    if (!nativeUrl || !fallbackUrl) return false;
+
+    let handlerName = "";
+    try {
+      handlerName = app.getApplicationNameForProtocol(nativeUrl);
+    } catch {
+      // The fallback browser remains available when handler detection fails.
+    }
+
+    if (!handlerName) {
+      return this.openExternalLink(fallbackUrl);
+    }
+
+    try {
+      await shell.openExternal(nativeUrl);
+      return true;
+    } catch (error) {
+      this.logOperationError("Teams protocol launch", error);
+      return this.openExternalLink(fallbackUrl);
+    }
+  }
+
+  openMailtoFields(fields) {
+    const composeUrl = buildOutlookComposeUrl(fields, this.mainMailServiceUrl);
+    if (!composeUrl || !this.win || this.win.isDestroyed()) return false;
+    void this.win.loadURL(composeUrl).catch((error) => {
+      this.logOperationError("Outlook compose navigation", error);
+    });
+    this.show();
+    return true;
+  }
+
+  handleProtocolUrl(url) {
+    const fields = parseMailto(url);
+    return fields ? this.openMailtoFields(fields) : false;
+  }
+
+  setUnreadHandler(handler) {
+    this.onUnreadChanged = typeof handler === "function" ? handler : null;
+  }
+
+  logOperationError(operation, error) {
+    const code =
+      error &&
+      typeof error.code === "string" &&
+      /^[A-Z0-9_-]{1,64}$/i.test(error.code)
+        ? ` (${error.code})`
+        : "";
+    console.warn(`[Prospect Mail] ${operation} failed${code}`);
+  }
+
+  routeUserLink(url, sourceUrl) {
+    return this.dispatchRoute(classifyUrl(url, { sourceUrl }));
+  }
+
+  dispatchRoute(route) {
+    switch (route.action) {
+      case ROUTE_ACTIONS.EXTERNAL:
+        return this.openExternalLink(route.url);
+      case ROUTE_ACTIONS.TEAMS:
+        void this.openTeamsLink(route.url);
+        return true;
+      case ROUTE_ACTIONS.MAILTO:
+        return this.openMailtoFields(route.fields);
+      case ROUTE_ACTIONS.INTERNAL:
+        if (route.url && this.win && !this.win.isDestroyed()) {
+          void this.win.loadURL(route.url).catch((error) => {
+            this.logOperationError("Outlook navigation", error);
+          });
+          return true;
+        }
+        return false;
+      default:
+        return false;
+    }
+  }
+
+  securePopupOptions() {
+    return {
+      autoHideMenuBar: true,
+      webPreferences: {
+        allowRunningInsecureContent: false,
+        contextIsolation: true,
+        nodeIntegration: false,
+        preload: path.join(__dirname, "popup-preload.js"),
+        sandbox: true,
+        webSecurity: true,
+        webviewTag: false,
+      },
+    };
+  }
+
+  configureWebContents(contents, { allowIpc }) {
+    this.ownedWebContents.add(contents.id);
+    contents.once("destroyed", () => {
+      this.ownedWebContents.delete(contents.id);
+    });
+
+    contents.on("will-attach-webview", (event) => event.preventDefault());
+    contents.on("will-navigate", (details) => {
+      this.guardNavigation(details, contents);
+    });
+    contents.on("will-redirect", (details) => {
+      this.guardNavigation(details, contents);
+    });
+
+    contents.setWindowOpenHandler((details) => {
+      const sourceUrl = details.referrer?.url || contents.getURL();
+      const route = classifyUrl(details.url, { sourceUrl });
+
+      if (
+        route.action === ROUTE_ACTIONS.INTERNAL_POPUP ||
+        (route.action === ROUTE_ACTIONS.INTERNAL &&
+          isAuthenticationUrl(route.url))
+      ) {
+        return {
+          action: "allow",
+          overrideBrowserWindowOptions: this.securePopupOptions(),
+        };
+      }
+
+      this.dispatchRoute(route);
+      return { action: "deny" };
+    });
+
+    contents.on("did-create-window", (childWindow) => {
+      this.configureWebContents(childWindow.webContents, { allowIpc: false });
+    });
+
+    if (allowIpc) this.registerIpcHandlers(contents);
+  }
+
+  guardNavigation(details, contents) {
+    if (details.isMainFrame === false) return;
+
+    const sourceUrl = details.initiator?.url || contents.getURL();
+    const route = classifyUrl(details.url, { sourceUrl });
+    if (
+      route.action === ROUTE_ACTIONS.INTERNAL ||
+      route.action === ROUTE_ACTIONS.INTERNAL_POPUP
+    ) {
       return;
     }
 
-    const customBrowserPath = settings.get("customBrowserPath");
+    details.preventDefault();
+    this.dispatchRoute(route);
+  }
 
-    if (customBrowserPath) {
-      // Use custom browser specified in settings
-      console.log(`Opening URL in custom browser: ${customBrowserPath}`);
-      try {
-        const child = spawn(customBrowserPath, [url], {
-          detached: true,
-          stdio: "ignore",
-        });
-        child.unref();
-        child.on('error', (err) => {
-          console.error('Failed to spawn custom browser:', err);
-          // Fallback to system default browser
-          shell.openExternal(url);
-        });
-      } catch (err) {
-        console.error('Failed to spawn custom browser:', err);
-        shell.openExternal(url);
+  registerIpcHandlers(contents) {
+    const isTrusted = (event) => isTrustedIpcEvent(event, contents);
+
+    contents.ipc.on("show", (event, ...args) => {
+      if (args.length === 0 && isTrusted(event)) this.show();
+    });
+
+    contents.ipc.on("updateUnread", (event, value, ...extra) => {
+      if (extra.length > 0 || !isTrusted(event)) return;
+      const unread = validateUnreadCount(value);
+      if (unread !== null && this.onUnreadChanged) {
+        this.onUnreadChanged(unread);
       }
-    } else {
-      // Fall back to system default browser
-      shell.openExternal(url);
+    });
+
+    contents.ipc.on("show-notification", (event, value, ...extra) => {
+      if (extra.length > 0 || !isTrusted(event)) return;
+      const request = validateNotificationRequest(value);
+      if (request) this.showRendererNotification(request);
+    });
+
+    contents.ipc.on("report-login-required", (event, value, ...extra) => {
+      if (extra.length > 0 || !isTrusted(event)) return;
+      const reason = validateLoginReason(value);
+      if (reason) this.handleLoginRequired(reason);
+    });
+  }
+
+  showRendererNotification(request) {
+    if (
+      request.kind === "mail" &&
+      settings.get("showUnreadNotifications") !== true
+    ) {
+      return;
     }
+    if (!Notification.isSupported()) return;
+
+    const content = buildNotificationContent(
+      request,
+      settings.get("showNotificationContent") === true
+    );
+    this.showAppNotification(content.title, content.body);
+  }
+
+  handleLoginRequired(reason) {
+    const decision = decideAuthRecovery({
+      reason,
+      isFocused: this.win.isFocused(),
+      now: Date.now(),
+      lastReloadAt: this.lastAuthRecoveryReloadAt,
+    });
+    this.lastAuthRecoveryReloadAt = decision.lastReloadAt;
+
+    if (decision.action === "reload") {
+      console.log("[Auth] Attempting one silent session recovery reload");
+      this.reloadWindowSilently();
+      return;
+    }
+
+    this.showAppNotification(
+      "Prospect Mail: Sign in required",
+      "Outlook requires you to sign in again. Click here to open Prospect Mail."
+    );
+  }
+
+  configureDownloadHandling(downloadSession) {
+    if (this.downloadSession && this.downloadHandler) {
+      this.downloadSession.removeListener("will-download", this.downloadHandler);
+    }
+
+    this.downloadSession = downloadSession;
+    this.downloadHandler = (_event, item, webContents) => {
+      if (
+        !webContents ||
+        !this.ownedWebContents.has(webContents.id)
+      ) {
+        return;
+      }
+
+      const filename = sanitizeDownloadFilename(item.getFilename());
+      item.setSaveDialogOptions({
+        title: "Save Outlook attachment",
+        defaultPath: path.join(app.getPath("downloads"), filename),
+      });
+    };
+    downloadSession.on("will-download", this.downloadHandler);
   }
 
   init() {
@@ -165,6 +406,11 @@ class MailWindowController {
       icon: path.join(__dirname, "../../assets/outlook_linux_black.png"),
       webPreferences: {
         contextIsolation: true,
+        nodeIntegration: false,
+        sandbox: true,
+        webSecurity: true,
+        allowRunningInsecureContent: false,
+        webviewTag: false,
         preload: path.join(__dirname, "preload.js"),
         // Keep the injected unread observer's timers running while the window is
         // hidden to tray (hideOnClose/hideOnMinimize). Chromium throttles timers
@@ -173,12 +419,15 @@ class MailWindowController {
         backgroundThrottling: false,
       },
     });
+    this.ownedWebContents.clear();
+    this.configureWebContents(this.win.webContents, { allowIpc: true });
+    this.configureDownloadHandling(this.win.webContents.session);
 
     // Set true right before a silent recovery reload so the dom-ready handler
     // doesn't re-show a hidden/background window (see reloadWindowSilently).
     this.suppressReloadShow = false;
 
-    const isDev = process.env.NODE_ENV === "development" || !app.isPackaged;
+    const isDev = process.env.NODE_ENV === "development";
 
     // Open DevTools in development mode
     if (isDev) {
@@ -214,13 +463,21 @@ class MailWindowController {
     // and load the index.html of the app.
     // Clean expired auth cookies first so Outlook starts from a clean session
     // state, giving SSO the best chance to silently re-authenticate (#419).
+    const initialUrl = this.initialMailtoFields
+      ? buildOutlookComposeUrl(
+          this.initialMailtoFields,
+          this.mainMailServiceUrl
+        ) || this.mainMailServiceUrl
+      : this.mainMailServiceUrl;
+    this.initialMailtoFields = null;
+    const initialWindow = this.win;
     this.cleanExpiredAuthCookies().finally(() => {
-      this.win.loadURL(mainMailServiceUrl, {
-        userAgent: customUserAgent,
-      });
+      if (!initialWindow.isDestroyed()) {
+        void initialWindow.loadURL(initialUrl, {
+          userAgent: customUserAgent,
+        });
+      }
     });
-
-    console.log("Custom User Agent: " + customUserAgent);
 
     // Setup context menu for text selection and links
     this.win.webContents.on("context-menu", (_event, params) => {
@@ -254,9 +511,9 @@ class MailWindowController {
           }
           menuTemplate.push(
             {
-              label: "Open Link in Browser",
+              label: "Open Link",
               click: () => {
-                this.openExternalLink(params.linkURL);
+                this.routeUserLink(params.linkURL, params.pageURL);
               },
             },
             {
@@ -298,133 +555,58 @@ class MailWindowController {
       }
     });
 
-    // Show window handler
-    ipcMain.on("show", (event) => {
-      this.show();
-    });
-
-    // Native notification handler
-    ipcMain.on("show-notification", (_event, { title, body, icon }) => {
-      const { Notification, nativeImage } = require("electron");
-
-      // Check if notifications are supported
-      if (!Notification.isSupported()) {
-        console.log("Notifications are not supported on this system");
-        return;
-      }
-
-      console.log("[Notification] Request received:", { title, bodyLength: body?.length || 0 });
-
-      // Create notification config
-      const notificationConfig = {
-        title,
-        body,
-      };
-
-      // Handle icon - use nativeImage if it's a data URL, otherwise use file path
-      const iconPath = icon || path.join(__dirname, "../../assets/outlook_linux_black.png");
-      if (iconPath.startsWith("data:")) {
-        notificationConfig.icon = nativeImage.createFromDataURL(iconPath);
-      } else {
-        notificationConfig.icon = iconPath;
-      }
-
-      // Create and show native notification
-      const notification = new Notification(notificationConfig);
-
-      notification.on("click", () => {
-        this.show();
-      });
-
-      notification.show();
-    });
-
-    // Session-expiry / sign-in handling. The renderer reports two cases:
-    //   "session-expired": OWA's data calls reject with AuthNeeded (the red
-    //     "your session has expired" banner, mail UI still rendered). One reload
-    //     usually clears it, since OWA re-runs silent SSO on a fresh load.
-    //   "login-page": a hard redirect to a Microsoft sign-in page, needing
-    //     interactive login.
-    //
-    // Recovery policy (see AUTH_RECOVERY_* above):
-    //   - login-page: always just notify. A reload can't help and could wipe a
-    //     half-entered login form.
-    //   - session-expired while the window is focused: notify only, so a reload
-    //     never interrupts something the user is doing (e.g. composing a draft).
-    //   - session-expired while hidden/unfocused: try one silent reload per
-    //     cooldown. If the banner returns within the cooldown, the reload didn't
-    //     fix it (session really gone), so notify instead of looping.
-    // A stuck/blank page from a dropped connection is handled by did-fail-load.
-    ipcMain.on("report-login-required", (_event, reason) => {
-      const notify = () =>
-        this.showAppNotification(
-          "Prospect Mail: Sign in required",
-          "Outlook requires you to sign in again. Click here to open Prospect Mail."
-        );
-
-      if (reason !== "session-expired") {
-        console.log(`[LoginRequired] Sign-in required (${reason}), notifying`);
-        notify();
-        return;
-      }
-
-      // Don't touch the window while the user is actively in it.
-      if (this.win.isFocused()) {
-        console.log("[LoginRequired] Session expired while in use, notifying");
-        notify();
-        return;
-      }
-
-      // Banner already came back soon after our reload: it didn't recover.
-      const now = Date.now();
-      if (now - lastAuthRecoveryReloadAt < AUTH_RECOVERY_COOLDOWN_MS) {
-        console.log(
-          "[LoginRequired] Session still expired after recovery reload, notifying"
-        );
-        notify();
-        return;
-      }
-
-      lastAuthRecoveryReloadAt = now;
-      console.log(
-        "[LoginRequired] Session expired, attempting silent recovery reload"
-      );
-      this.reloadWindowSilently();
-    });
-
     // Network recovery: reload when the main frame fails to load with a
     // transient connectivity error (e.g. after sleep or a network change).
     // Debounced so a burst of failures triggers a single reload; sub-frame and
     // non-recoverable errors (aborts, cert/HTTP) are ignored.
     this.win.webContents.on(
       "did-fail-load",
-      (_event, errorCode, errorDescription, _validatedURL, isMainFrame) => {
-        if (!isMainFrame || !RECOVERABLE_NET_ERRORS.has(errorCode)) return;
+      (_event, errorCode, _errorDescription, _validatedURL, isMainFrame) => {
         const now = Date.now();
-        if (now - lastNetworkReloadAt < NETWORK_RELOAD_MIN_INTERVAL_MS) return;
-        lastNetworkReloadAt = now;
-        console.log(
-          `[Network] Main frame failed to load (${errorCode} ${errorDescription}), reloading`
-        );
-        this.reloadWindow();
+        if (
+          !shouldReloadForNetworkFailure({
+            errorCode,
+            isMainFrame,
+            now,
+            lastReloadAt: this.lastNetworkReloadAt,
+          })
+        ) {
+          return;
+        }
+        this.lastNetworkReloadAt = now;
+        console.log(`[Network] Recovering main-frame load error ${errorCode}`);
+        this.reloadWindowSilently();
       }
     );
 
     // After resuming from sleep, cookies may have expired during suspend.
     // Clean them so Outlook doesn't show a stale session state.
-    const { powerMonitor } = require("electron");
-    powerMonitor.on("resume", () => {
-      this.cleanExpiredAuthCookies();
-    });
+    if (this.resumeHandler) {
+      powerMonitor.removeListener("resume", this.resumeHandler);
+    }
+    this.resumeHandler = () => {
+      void this.cleanExpiredAuthCookies();
+    };
+    powerMonitor.on("resume", this.resumeHandler);
 
-    // insert styles
+    // Inject only into known Microsoft Outlook/auth pages. A navigation guard
+    // prevents external content from retaining the privileged preload.
     this.win.webContents.on("dom-ready", () => {
-      this.win.webContents.insertCSS(getClientFile("main.css"));
-      if (!showWindowFrame) {
-        this.win.webContents.insertCSS(getClientFile("no-frame.css"));
+      const currentUrl = this.win.webContents.getURL();
+      if (isOutlookUrl(currentUrl)) {
+        void this.win.webContents
+          .insertCSS(getClientFile("main.css"))
+          .catch((error) => this.logOperationError("Style injection", error));
+        if (!showWindowFrame) {
+          void this.win.webContents
+            .insertCSS(getClientFile("no-frame.css"))
+            .catch((error) => this.logOperationError("Style injection", error));
+        }
+        this.addUnreadNumberObserver();
+      } else if (isAuthenticationUrl(currentUrl)) {
+        this.addUnreadNumberObserver();
       }
 
-      this.addUnreadNumberObserver();
       if (this.suppressReloadShow) {
         // A silent session-recovery reload must not change window visibility.
         this.suppressReloadShow = false;
@@ -439,52 +621,11 @@ class MailWindowController {
       }
     });
 
-    this.win.webContents.setWindowOpenHandler(({ url }) => {
-      console.log(url);
-      // If url is a detach from outlook then open in small window
-      if (url === "about:blank") {
-        return {
-          action: "allow",
-          overrideBrowserWindowOptions: {
-            autoHideMenuBar: true,
-          },
-        };
-      }
-      // Open MS Safe Links in local browser
-      if (this.safelinksPattern && this.safelinksPattern.test(url)) {
-        this.openExternalLink(url);
-        return {
-          action: "deny",
-        };
-      }
-      // If deeplink is detected, open it in new detached window from app
-      if (this.deeplinkPattern && this.deeplinkPattern.test(url)) {
-        return {
-          action: "allow",
-          overrideBrowserWindowOptions: {
-            autoHideMenuBar: true,
-          },
-        };
-      }
-      // Check if the URL matches any mailServicesUrls for outlook.com
-      if (this.mailServicesPattern && this.mailServicesPattern.test(url)) {
-        // Open main MS365 apps the same window
-        this.win.loadURL(url);
-        return {
-          action: "deny",
-        };
-      }
-      this.openExternalLink(url);
-      return {
-        action: "deny",
-      };
-    });
-
     // prevent the app quit, hide the window instead.
     this.win.on("close", (e) => {
       //console.log('Log invoked: ' + this.win.isVisible())
       if (this.win.isVisible()) {
-        if (settings.get("hideOnClose")) {
+        if (settings.get("hideOnClose") === true) {
           e.preventDefault();
           this.win.hide();
         }
@@ -493,7 +634,7 @@ class MailWindowController {
 
     // prevent the app minimze, hide the window instead.
     this.win.on("minimize", (e) => {
-      if (settings.get("hideOnMinimize")) {
+      if (settings.get("hideOnMinimize") === true) {
         e.preventDefault();
         this.win.hide();
       }
@@ -513,14 +654,28 @@ class MailWindowController {
   }
 
   addUnreadNumberObserver() {
-    const showUnreadNotifications = settings.get("showUnreadNotifications");
-    const unreadNotificationSource = settings.get("unreadNotificationSource");
-    this.win.webContents.executeJavaScript(
-      `window.prospectMailConfig = Object.assign(window.prospectMailConfig || {}, { showUnreadNotifications: ${JSON.stringify(showUnreadNotifications)}, unreadNotificationSource: ${JSON.stringify(unreadNotificationSource)} });`
-    );
-    this.win.webContents.executeJavaScript(
-      getClientFile("unread-number-observer.js")
-    );
+    const config = {
+      showUnreadNotifications:
+        settings.get("showUnreadNotifications") === true,
+      showNotificationContent:
+        settings.get("showNotificationContent") === true,
+      unreadNotificationSource:
+        settings.get("unreadNotificationSource") === "favorites"
+          ? "favorites"
+          : "inbox",
+    };
+    const setConfig = `window.prospectMailConfig = Object.assign(window.prospectMailConfig || {}, ${JSON.stringify(config)});`;
+
+    void this.win.webContents
+      .executeJavaScript(setConfig)
+      .then(() =>
+        this.win.webContents.executeJavaScript(
+          getClientFile("unread-number-observer.js")
+        )
+      )
+      .catch((error) =>
+        this.logOperationError("Outlook observer injection", error)
+      );
   }
 
   /**
@@ -530,8 +685,10 @@ class MailWindowController {
    * "sign in again" state instead of auto-authenticating via SSO.
    */
   async cleanExpiredAuthCookies() {
+    if (!this.win || this.win.isDestroyed()) return;
+    const currentSession = this.win.webContents.session;
     try {
-      const allCookies = await this.win.webContents.session.cookies.get({});
+      const allCookies = await currentSession.cookies.get({});
       const nowSeconds = Date.now() / 1000;
 
       const expired = allCookies.filter((cookie) => {
@@ -547,10 +704,7 @@ class MailWindowController {
         );
       });
 
-      if (expired.length === 0) {
-        console.log("[Auth] No expired auth cookies found");
-        return;
-      }
+      if (expired.length === 0) return;
 
       console.log(`[Auth] Removing ${expired.length} expired auth cookie(s)`);
       for (const cookie of expired) {
@@ -560,13 +714,13 @@ class MailWindowController {
             ? cookie.domain.substring(1)
             : cookie.domain;
           const url = `${protocol}://${domain}${cookie.path || "/"}`;
-          await this.win.webContents.session.cookies.remove(url, cookie.name);
-        } catch (err) {
-          console.warn(`[Auth] Failed to remove cookie ${cookie.name}:`, err.message);
+          await currentSession.cookies.remove(url, cookie.name);
+        } catch (error) {
+          this.logOperationError("Expired auth cookie removal", error);
         }
       }
-    } catch (err) {
-      console.warn("[Auth] Cookie check failed:", err.message);
+    } catch (error) {
+      this.logOperationError("Auth cookie check", error);
     }
   }
 
@@ -575,7 +729,6 @@ class MailWindowController {
    * tray/minimized user that Outlook needs an interactive sign-in).
    */
   showAppNotification(title, body) {
-    const { Notification } = require("electron");
     if (!Notification.isSupported()) return;
 
     const notification = new Notification({
@@ -588,11 +741,8 @@ class MailWindowController {
   }
 
   toggleWindow() {
-    console.log("toggleWindow", {
-      isFocused: this.win.isFocused(),
-      isVisible: this.win.isVisible(),
-    });
-    if (/*this.win.isFocused() && */ this.win.isVisible()) {
+    if (!this.win || this.win.isDestroyed()) return;
+    if (this.win.isVisible()) {
       this.win.hide();
     } else {
       initialMinimization.domReady = false;
@@ -600,6 +750,7 @@ class MailWindowController {
     }
   }
   reloadWindow() {
+    if (!this.win || this.win.isDestroyed()) return;
     initialMinimization.domReady = false;
     this.win.reload();
   }
@@ -608,11 +759,13 @@ class MailWindowController {
   // recovery while the window is hidden/unfocused: unlike reloadWindow(), it
   // does not force the window to show on the next dom-ready.
   reloadWindowSilently() {
+    if (!this.win || this.win.isDestroyed()) return;
     this.suppressReloadShow = true;
     this.win.webContents.reload();
   }
 
   show() {
+    if (!this.win || this.win.isDestroyed()) return;
     initialMinimization.domReady = false;
 
     // Raise with exactly ONE Wayland activation. restore()/show()/focus()
@@ -621,13 +774,11 @@ class MailWindowController {
     // tokens that GNOME rejects with an "X is ready" prompt. moveTop() is a
     // no-op on Wayland and never consumes the token.
     // See https://github.com/electron/electron/pull/50568
-    if (this.win.isMinimized()) {
-      this.win.restore(); // also raises + focuses
-    } else if (this.win.isVisible()) {
-      this.win.focus();
-    } else {
-      this.win.show(); // also focuses
-    }
+    const action = chooseShowAction({
+      isMinimized: this.win.isMinimized(),
+      isVisible: this.win.isVisible(),
+    });
+    this.win[action]();
   }
 }
 
