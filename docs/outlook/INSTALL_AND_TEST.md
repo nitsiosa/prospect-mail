@@ -4,6 +4,8 @@
 
 - Source commit: `997b5517ad2db7353680ea34f4d4a60c5e126bbb`
 - Branch: `feat/outlook-wayland-ubuntu`
+- Fork: <https://github.com/nitsiosa/prospect-mail>
+- Draft PR: <https://github.com/nitsiosa/prospect-mail/pull/1>
 - Debian package: `dist/prospect-mail_1.3.1_amd64.deb`
 - Package name/version/architecture: `prospect-mail` / `1.3.1` / `amd64`
 - SHA256: `a8d7296628c30038ddeb6848694e2ad926f450014615407cdc48e95fd71aa26c`

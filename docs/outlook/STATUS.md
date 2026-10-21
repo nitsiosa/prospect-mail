@@ -2,8 +2,9 @@
 
 **Maintained by Cursor. Update after every phase.**
 
-Project state: `LOCAL_CANDIDATE_READY_REMOTE_PENDING`
-Fork: `PENDING_CREATION`
+Project state: `LOCAL_CANDIDATE_READY_REMOTE_BLOCKED`
+Fork: `https://github.com/nitsiosa/prospect-mail`
+Draft PR: `https://github.com/nitsiosa/prospect-mail/pull/1`
 Branch: `feat/outlook-wayland-ubuntu`
 Upstream base SHA: `da1c55fa327a9f78ff065c62b4d172db481e8d3a`
 Last update: `2026-10-21`
@@ -21,15 +22,17 @@ Environment: `Ubuntu 24.04.5 LTS / GNOME Wayland / x86_64 / Node 24.22.0 / npm 1
 Automated tests: `AUTO_PASS — 43/43 Node tests plus source and packaged-archive native-Wayland synthetic smoke, 2026-10-21`
 Security review: `AUTO_PASS (source/runtime boundaries) — npm audit --omit=dev: 0 vulnerabilities; full audit: 8 moderate development-only findings in electron-builder's legacy global-agent chain`
 Debian artifact: `dist/prospect-mail_1.3.1_amd64.deb — SHA256 a8d7296628c30038ddeb6848694e2ad926f450014615407cdc48e95fd71aa26c`
-Ready for human testing: `YES LOCALLY — remote PR validation still pending; live acceptance is not implied`
+Ready for human testing: `YES LOCALLY — remote CI is unavailable; live acceptance is not implied`
 Live corporate acceptance: `NOT_RUN`
 
 ## NEEDS_HUMAN queue
+- GitHub Actions workflows exist in the fork's files but are not registered by GitHub for this new fork; the draft PR has zero check runs. Enabling fork Actions changes CI configuration and requires separate explicit approval. Remote validation remains unverified.
 - Install the exact hashed `.deb` and confirm its sandboxed GNOME Wayland launch.
 - Complete the single consolidated Microsoft 365 checklist in `INSTALL_AND_TEST.md`: sign-in/MFA/session persistence; mail/attachments; calendar/RSVP/People; notifications/focus; Teams; mailto; suspend/network recovery; launcher/tray/quit.
 - Do not provide credentials, tokens, cookies, tenant IDs or private mailbox/calendar content.
 
 ## Recent activity (prepend entries)
+- [2026-10-21 remote] Created `nitsiosa/prospect-mail`, pushed all four commits and opened draft PR #1 against the fork's `main`. The PR is mergeable/clean with no comments or reviews, but GitHub reports zero workflows/check runs, so remote CI is not green or verified.
 - [2026-10-21 release candidate] Built `prospect-mail_1.3.1_amd64.deb`; desktop/control/AppArmor/permissions/archive checks pass. Final SHA256: `a8d7296628c30038ddeb6848694e2ad926f450014615407cdc48e95fd71aa26c`.
 - [2026-10-21 packaged smoke] Loaded the final packaged `app.asar` against a synthetic Outlook origin on native Ozone Wayland; main/popup isolation, notification IPC and mailto compose passed. Test/development material is absent from the archive.
 - [2026-10-21 auth compatibility] Added bounded federated HTTPS redirect handling for tenant IdPs while retaining Microsoft-origin-only IPC.

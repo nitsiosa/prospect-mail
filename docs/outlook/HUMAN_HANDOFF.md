@@ -2,6 +2,10 @@
 
 Local candidate source: `997b5517ad2db7353680ea34f4d4a60c5e126bbb` on `feat/outlook-wayland-ubuntu`
 
+Fork: <https://github.com/nitsiosa/prospect-mail>
+
+Draft PR: <https://github.com/nitsiosa/prospect-mail/pull/1>
+
 Artifact: `dist/prospect-mail_1.3.1_amd64.deb`
 
 SHA256: `a8d7296628c30038ddeb6848694e2ad926f450014615407cdc48e95fd71aa26c`
@@ -13,6 +17,7 @@ SHA256: `a8d7296628c30038ddeb6848694e2ad926f450014615407cdc48e95fd71aa26c`
 - Production dependency audit has 0 vulnerabilities.
 - Debian build, control scripts, desktop entry, Wayland/X11 actions, `mailto:` MIME declaration, AppArmor payload, file permissions and packaged archive allowlist pass.
 - Security review found no unresolved high-risk issue.
+- The remote branch and draft PR exist and are mergeable, but GitHub has not registered the inherited workflows for this new fork. Remote CI remains unverified.
 
 ## Not yet verified
 
