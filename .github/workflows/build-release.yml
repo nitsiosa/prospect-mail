@@ -7,15 +7,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Explicit permissions for security
+# Read-only by default. Release jobs opt in to write access, but checkout
+# never persists that credential and publish tokens are step-scoped.
 permissions:
-  contents: write  # For creating releases
-  packages: write  # For publishing artifacts
+  contents: read
 
 env:
   NODE_VERSION: 24
-  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
 
 jobs:
   # Fast gate: unit tests must pass before any build/release job runs.
@@ -24,6 +22,8 @@ jobs:
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Install Node.js and NPM
         uses: actions/setup-node@v7
@@ -40,6 +40,8 @@ jobs:
   build-and-release:
     needs: test
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
 
     # Platforms to build on/for
     strategy:
@@ -55,6 +57,8 @@ jobs:
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Install Node.js and NPM
         uses: actions/setup-node@v7
@@ -90,6 +94,9 @@ jobs:
           startsWith(github.ref, 'refs/tags/') &&
           matrix.os == 'ubuntu'
         run: npm run dist:linux:${{ matrix.arch }} -- --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
 
       - name: Upload snap to GitHub Release
         if: |
@@ -111,6 +118,8 @@ jobs:
           startsWith(github.ref, 'refs/tags/') &&
           matrix.os == 'macos'
         run: npm run dist:mac:${{ matrix.arch }} -- --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build for test only windows
         if: |
@@ -123,14 +132,20 @@ jobs:
           startsWith(github.ref, 'refs/tags/') &&
           matrix.os == 'windows'
         run: npm run dist:windows:${{ matrix.arch }} -- --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-and-release-snap-arm64:
     needs: test
     runs-on: ubuntu-26.04-arm
+    permissions:
+      contents: write
 
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Install Node.js and NPM
         uses: actions/setup-node@v7
@@ -156,6 +171,9 @@ jobs:
       - name: Release snap
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: npm run dist:linux:snap:arm64 -- --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
 
       - name: Upload arm64 snap to GitHub Release
         if: ${{ startsWith(github.ref, 'refs/tags/') }}

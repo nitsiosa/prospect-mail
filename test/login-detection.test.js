@@ -70,6 +70,24 @@ test("isOnLoginPageUrl matches only Microsoft sign-in hosts", () => {
     observer.isOnLoginPageUrl("https://outlook.cloud.microsoft/people/"),
     false
   );
+  assert.strictEqual(
+    observer.isOnLoginPageUrl(
+      "https://login.microsoftonline.com.attacker.invalid/common/oauth2"
+    ),
+    false
+  );
+  assert.strictEqual(
+    observer.isOnLoginPageUrl(
+      "https://login.microsoftonline.com@evil.invalid/common/oauth2"
+    ),
+    false
+  );
+  assert.strictEqual(
+    observer.isOnLoginPageUrl(
+      "http://login.microsoftonline.com/common/oauth2"
+    ),
+    false
+  );
   assert.strictEqual(observer.isOnLoginPageUrl(""), false);
   assert.strictEqual(observer.isOnLoginPageUrl(null), false);
 });
@@ -105,6 +123,51 @@ test("isAuthNeededRejection matches the AuthNeeded token exactly", () => {
     false
   );
   assert.strictEqual(observer.isAuthNeededRejection(null), false);
+});
+
+test("parseUnreadTitle is localization independent", () => {
+  assert.strictEqual(
+    observer.parseUnreadTitle("Inbox - 263 items (217 unread)"),
+    217
+  );
+  assert.strictEqual(
+    observer.parseUnreadTitle("Posteingang - 263 Elemente (42 ungelesen)"),
+    42
+  );
+  assert.strictEqual(
+    observer.parseUnreadTitle("Inbox - 2,000 items (1,234 unread)"),
+    1234
+  );
+  assert.strictEqual(
+    observer.parseUnreadTitle("Posteingang - 2.000 Elemente (1.234 ungelesen)"),
+    1234
+  );
+  assert.strictEqual(observer.parseUnreadTitle("Inbox - 0 items"), 0);
+  assert.strictEqual(observer.parseUnreadTitle(null), 0);
+});
+
+test("formatReminderDetails builds bounded opt-in content", () => {
+  const reminder = (attributes) => ({
+    getAttribute: (name) => attributes[name] || null,
+  });
+  assert.strictEqual(
+    observer.formatReminderDetails([
+      reminder({
+        subject: "Planning",
+        starttimedisplaystring: "10:00",
+        timeuntildisplaystring: "in 5 minutes",
+        location: "Room 1",
+      }),
+      reminder({}),
+    ]),
+    "Planning at 10:00 (in 5 minutes) - Room 1\nReminder"
+  );
+  assert.strictEqual(
+    observer.formatReminderDetails([
+      reminder({ subject: "x".repeat(1200) }),
+    ]).length,
+    1000
+  );
 });
 
 test("recordAuthNeeded requires minHits within the window", () => {

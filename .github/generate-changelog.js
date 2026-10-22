@@ -1,13 +1,47 @@
 #!/usr/bin/env node
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 // Get tag range from arguments
 const currentTag = process.argv[2];
 const previousTag = process.argv[3];
 
+const resolveTagRef = (tag, label, required) => {
+  if (!tag) {
+    if (!required) return '';
+    throw new Error(`${label} is required`);
+  }
+  if (
+    typeof tag !== 'string' ||
+    tag.length > 256 ||
+    /[\u0000-\u001f\u007f]/.test(tag)
+  ) {
+    throw new Error(`${label} is invalid`);
+  }
+
+  const ref = `refs/tags/${tag}`;
+  try {
+    execFileSync('git', [
+      'rev-parse',
+      '--verify',
+      '--quiet',
+      `${ref}^{commit}`,
+    ], { stdio: 'ignore' });
+  } catch {
+    throw new Error(`${label} does not name an existing tag`);
+  }
+  return ref;
+};
+
+const currentRef = resolveTagRef(currentTag, 'current tag', true);
+const previousRef = resolveTagRef(previousTag, 'previous tag', false);
+
 // Get repository URL from git remote
-const remoteUrl = execSync('git config --get remote.origin.url', { encoding: 'utf-8' }).trim();
+const remoteUrl = execFileSync(
+  'git',
+  ['config', '--get', 'remote.origin.url'],
+  { encoding: 'utf-8' }
+).trim();
 // Convert SSH URL to HTTPS (e.g., git@github.com:user/repo.git -> https://github.com/user/repo)
 const repoUrl = remoteUrl
   .replace(/^git@([^:]+):/, 'https://$1/')
@@ -26,8 +60,12 @@ const categories = {
 };
 
 // Get commits between tags
-const range = previousTag ? `${previousTag}..${currentTag}` : currentTag;
-const gitLog = execSync(`git log ${range} --no-merges --pretty=format:"%h|%s"`, { encoding: 'utf-8' });
+const range = previousRef ? `${previousRef}..${currentRef}` : currentRef;
+const gitLog = execFileSync(
+  'git',
+  ['log', range, '--no-merges', '--pretty=format:%h|%s'],
+  { encoding: 'utf-8' }
+);
 
 // Parse and categorize commits
 gitLog.split('\n').forEach(line => {

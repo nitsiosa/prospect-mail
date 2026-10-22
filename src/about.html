@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src file: data:; script-src 'unsafe-inline';">
-    <title>About Prospect Mail</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; script-src 'self';">
+    <title>About Harbour Mail</title>
     <style>
         * {
             margin: 0;
@@ -129,12 +129,12 @@
 </head>
 <body>
     <button class="close-button" id="close-btn">×</button>
-    <img src="../misc/prospect-logo.svg" alt="Prospect Mail Logo" class="logo">
-    <h1 id="app-name">Prospect Mail</h1>
+    <img src="../misc/harbour-logo.svg" alt="Harbour Mail Logo" class="logo">
+    <h1 id="app-name">Harbour Mail</h1>
     <div class="version" id="version">Version 1.1.0-beta</div>
 
     <div class="info">
-        <p>Unofficial desktop email client for Microsoft Outlook</p>
+        <p>Harbour Mail is an unofficial desktop client for Microsoft Outlook</p>
         <p><strong>Distributed under MIT license</strong></p>
         <p>If this app has been useful for you,<br>consider buying me a coffee ☕!</p>
     </div>
@@ -149,53 +149,6 @@
         <a href="#" class="report-link" id="report-link">Report an issue</a>
     </div>
 
-    <script>
-        // Version and links are passed via URL parameters
-        const urlParams = new URLSearchParams(window.location.search);
-        const version = urlParams.get('version');
-        const githubUrl = urlParams.get('github');
-        const donateUrl = urlParams.get('donate');
-        const issuesUrl = `${githubUrl}/issues`;
-
-        // Set version
-        document.getElementById('version').textContent = `Version ${version}`;
-
-        // Get link elements
-        const githubLink = document.getElementById('github-link');
-        const donateLink = document.getElementById('donate-link');
-        const reportLink = document.getElementById('report-link');
-        const closeBtn = document.getElementById('close-btn');
-
-        // Close button handler
-        if (closeBtn) {
-            closeBtn.addEventListener('click', () => {
-                if (window.electronAPI && window.electronAPI.closeWindow) {
-                    window.electronAPI.closeWindow();
-                }
-            });
-        }
-
-        // Add click handlers
-        githubLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (window.electronAPI && window.electronAPI.openExternal) {
-                window.electronAPI.openExternal(githubUrl);
-            }
-        });
-
-        donateLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (window.electronAPI && window.electronAPI.openExternal) {
-                window.electronAPI.openExternal(donateUrl);
-            }
-        });
-
-        reportLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (window.electronAPI && window.electronAPI.openExternal) {
-                window.electronAPI.openExternal(issuesUrl);
-            }
-        });
-    </script>
+    <script src="./about.js"></script>
 </body>
 </html>

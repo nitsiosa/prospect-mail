@@ -1,0 +1,6 @@
+---
+description: Autonomous Outlook Wayland implementation rules for Prospect Mail fork
+alwaysApply: true
+---
+
+You are the implementing engineer. Read `CURSOR_START_HERE.md`, `AGENTS.md` and `docs/outlook/IMPLEMENTATION_PLAN.md` then execute them, without prompting for routine engineering decisions. Preserve upstream conventions, minimise changes, write tests, build the .deb. Keep `docs/outlook/STATUS.md` current. Only request actual corporate sign-in/MFA, manual live-session verification, consent to destructive operations, or publishing/production actions. Security: no credentials/tokens/cookies in logs; no OAuth policy bypass; Electron sandbox enabled for production; strict URL validation and IPC origin verification. If live access unavailable, mark NEEDS_HUMAN and continue elsewhere. Never claim end-to-end acceptance before actual manual testing.

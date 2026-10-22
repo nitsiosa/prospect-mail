@@ -1,6 +1,6 @@
-# Contributing to Prospect Mail
+# Contributing to Harbour Mail
 
-Thank you for your interest in contributing to Prospect Mail! This document
+Thank you for your interest in contributing to Harbour Mail! This document
 provides guidelines and information for contributing to the project.
 
 ## Code of Conduct
@@ -209,7 +209,7 @@ automatically categorize changes in the release notes.
 
 ## Release Process
 
-This section describes how new versions of Prospect Mail are released. This is primarily for maintainers but provides transparency for contributors.
+This section describes how new versions of Harbour Mail are released. This is primarily for maintainers but provides transparency for contributors.
 
 ### Version Numbering
 
@@ -394,9 +394,9 @@ If you need help or have questions:
 
 ## License
 
-By contributing to Prospect Mail, you agree that your contributions will be
+By contributing to Harbour Mail, you agree that your contributions will be
 licensed under the [MIT License](LICENSE).
 
 ---
 
-Thank you for contributing to Prospect Mail!
+Thank you for contributing to Harbour Mail!
